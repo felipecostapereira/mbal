@@ -50,7 +50,7 @@ with tabRes:
         ax2.set_ylabel('Np/poço')
         ax2.set_xlabel('IP')
         # sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 100), x=np.random.normal(pi_mean, pi_std, 100), ax=ax2, fill=False,)
-        j = sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 500), x=np.random.normal(pi_mean, pi_std, 500),kind='kde')
+        j = sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 1000), x=np.random.normal(pi_mean, pi_std, 1000),kind='hex')
         j.figure.axes[0].set_ylabel('Np/poço')
         j.figure.axes[1].set_ylabel('IP')
     st.pyplot(j.figure)
