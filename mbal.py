@@ -10,27 +10,19 @@ import altair as alt
 # sns.color_palette('coolwarm_r')
 
 
-# streamlit run uber_pickups.py
 list_mecanismos = {
     'Oil': ['Depleção', 'Injeção de Água', 'Injeção de Gás'],
     'Gas': ['Depleção'],
 }
 
-@st.cache_data
-def get_sr3():
-    pass
-
 resType = st.sidebar.radio('Reservoir type:',['Oil','Gas'], horizontal=True)
-
 tabRes, tabSampling, tabMBAL, tabResults =  st.tabs(['Reservoir', 'Sampling', 'MBAL', 'Results'])
 with tabRes:
-
     col1, col2 = st.columns(2)
     with col1:
         selected_mecanisms = st.multiselect(
             f'Mecanismo de Recuperação - {resType}', list_mecanismos[resType]
         )
-
     with col2:
         if resType == 'Oil':
             voip = st.slider('VOIP (MMBBL)', 0, 5000, 2000)
@@ -49,7 +41,6 @@ with tabRes:
         fig2, ax2 = plt.subplots()
         ax2.set_ylabel('Np/poço')
         ax2.set_xlabel('IP')
-        # sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 100), x=np.random.normal(pi_mean, pi_std, 100), ax=ax2, fill=False,)
         j = sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 1000), x=np.random.normal(pi_mean, pi_std, 1000),kind='hex')
         j.figure.axes[0].set_ylabel('Np/poço')
         j.figure.axes[1].set_ylabel('IP')
@@ -57,4 +48,8 @@ with tabRes:
 
 
 with tabSampling:
-    st.header("hehas")
+    st.header("opções de amostragem: montecarlo, hipercubo latino, numero de rodadas MBAL etc....., mostrar um tabelao pandas com os experimentos")
+with tabMBAL:
+    st.header("Acompanhamento das rodadas e parametrização do openserver")
+with tabResults:
+    st.header("calma, estamos fazendo")
