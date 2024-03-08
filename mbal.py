@@ -16,7 +16,7 @@ list_mecanismos = {
 }
 
 resType = st.sidebar.radio('Reservoir type:',['Oil','Gas'], horizontal=True)
-tabRes, tabSampling, tabMBAL, tabMatBal,  tabResults =  st.tabs(['Reservoir', 'Sampling', 'MBAL', 'MatBal Spreadsheet' 'Results'])
+tabRes, tabSampling, tabMBAL, tabMatBal,  tabResults =  st.tabs(['Reservoir', 'Sampling', 'MBAL', 'MatBal Spreadsheet', 'Results'])
 with tabRes:
     col1, col2 = st.columns(2)
     with col1:
