@@ -16,7 +16,7 @@ list_mecanismos = {
 }
 
 resType = st.sidebar.radio('Reservoir type:',['Oil','Gas'], horizontal=True)
-tabRes, tabSampling, tabMBAL, tabResults =  st.tabs(['Reservoir', 'Sampling', 'MBAL', 'Results'])
+tabRes, tabSampling, tabMBAL, tabMatBal,  tabResults =  st.tabs(['Reservoir', 'Sampling', 'MBAL', 'MatBal Spreadsheet' 'Results'])
 with tabRes:
     col1, col2 = st.columns(2)
     with col1:
@@ -51,5 +51,7 @@ with tabSampling:
     st.header("opções de amostragem: montecarlo, hipercubo latino, numero de rodadas MBAL etc....., mostrar um tabelao pandas com os experimentos")
 with tabMBAL:
     st.header("Acompanhamento das rodadas e parametrização do openserver")
+with tabMatBal:
+    st.header("aqui vamos usar a planilha do Gusmão")
 with tabResults:
     st.header("calma, estamos fazendo")
