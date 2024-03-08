@@ -22,7 +22,7 @@ def get_sr3():
 
 resType = st.sidebar.radio('Reservoir type:',['Oil','Gas'], horizontal=True)
 
-tabRes, tabSampling =  st.tabs(['Reservoir', 'Sampling'])
+tabRes, tabSampling, tabMBAL, tabResults =  st.tabs(['Reservoir', 'Sampling', 'MBAL', 'Results'])
 with tabRes:
 
     col1, col2 = st.columns(2)
@@ -53,7 +53,7 @@ with tabRes:
         j = sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 500), x=np.random.normal(pi_mean, pi_std, 500),kind='kde')
         j.figure.axes[0].set_ylabel('Np/poço')
         j.figure.axes[1].set_ylabel('IP')
-        st.pyplot(j.figure)
+    st.pyplot(j.figure)
 
 
 with tabSampling:
