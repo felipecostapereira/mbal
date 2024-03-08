@@ -33,13 +33,13 @@ with tabRes:
         selected_mecanisms = st.multiselect(f'Production Mechanism - {resType}', list_mecanismos[resType])
     with col2:
         if resType == 'Oil':
-            plot = sns.kdeplot(np.random.normal(np.mean(voip),(voip[1]-voip[0])/6,1000), fill=True)
-            plot.set_xlabel("VOIP")
-            st.pyplot(plot.figure)
+            ploto = sns.kdeplot(np.random.normal(np.mean(voip),(voip[1]-voip[0])/6,1000), fill=True)
+            ploto.set_xlabel("VOIP")
+            st.pyplot(ploto.figure)
         else:
-            plot=sns.kdeplot(np.random.normal(np.mean(vgip),(vgip[1]-vgip[0])/6,1000), fill=True)
-            plot.set_xlabel("VGIP")
-            st.pyplot(plot.figure)
+            plotg=sns.kdeplot(np.random.normal(np.mean(vgip),(vgip[1]-vgip[0])/6,1000), fill=True)
+            plotg.set_xlabel("VGIP")
+            st.pyplot(plotg.figure)
 
 
     st.divider()
