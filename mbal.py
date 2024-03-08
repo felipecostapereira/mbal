@@ -53,7 +53,7 @@ with tabRes:
         pi_mean = np.mean(pi)
         pi_std = (pi[1]-pi[0])/6
     with col4:
-        j = sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 10000), x=np.random.normal(pi_mean, pi_std, 10000), kind='hex', height=4)
+        j = sns.jointplot(y=np.random.normal(np_well_mean, np_well_std, 1000), x=np.random.normal(pi_mean, pi_std, 1000), kind='hex', height=4)
         j.figure.axes[0].set_xlabel('PI')
         j.figure.axes[0].set_ylabel('Np/well')
         j.figure.axes[0].set_xlim((0, 200))
