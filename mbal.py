@@ -120,7 +120,7 @@ with tabSampling:
 
 with tabSchedule:
     d = st.date_input("Fisrt Oil", datetime.date(2034, 1, 1))
-    interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='asdasdf', placeholder='One new well every 90 days')
+    interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='teste help', placeholder='One new well every 90 days')
 
 with tabMBAL:
     st.header("Acompanhamento das rodadas e parametrização do openserver")
