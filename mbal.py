@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import datetime
 
 help_strings = {
     'sliders': f'(min,max) = ($\mu-3\sigma,\mu+3\sigma$)',
@@ -19,7 +20,16 @@ list_mecanismos = {
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
 unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
 
-tabRes, tabFluid, tabVFP, tabSampling, tabMBAL, tabMatBal,  tabResults =  st.tabs(['Reservoir:mount_fuji:', 'Fluid:oil_drum:', 'VFP:chart_with_upwards_trend:', 'Sampling:game_die:', 'MBAL	:m:', 'Spreadsheet:chart_with_downwards_trend:', 'Results:signal_strength:'])
+tabRes, tabFluid, tabVFP, tabSampling, tabSchedule, tabMBAL, tabMatBal,  tabResults =  st.tabs([
+    'Reservoir:mount_fuji:',
+    'Fluid:oil_drum:',
+    'VFP:chart_with_upwards_trend:',
+    'Sampling:game_die:',
+    'Schedule:calendar:',
+    'MBAL:m:',
+    'Spreadsheet:chart_with_downwards_trend:',
+    'Results:signal_strength:'
+    ])
 with tabRes:
     col1, col2 = st.columns(2)
     with col1:
@@ -66,7 +76,7 @@ with tabFluid:
     with col1:
         nfluids = st.number_input('How many Fluids?',1,5,3)
         fluids = [f+1 for f in range(nfluids)]
-
+        st.divider()
         fluid_prob = [st.number_input(f"Probability/weight of fluid {i+1}", 1,100,1, help=help_strings['norm']) for i in range(nfluids)]
         st.divider()
         fluid_files = [st.file_uploader(f"PVT file (fluid {i+1})", help=help_strings['pvt']) for i in range(nfluids)]
@@ -108,11 +118,15 @@ with tabSampling:
     'Stats'
     st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
 
-
+with tabSchedule:
+    d = st.date_input("Fisrt Oil", datetime.date(2034, 1, 1))
+    interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='asdasdf', placeholder='One new well every 90 days')
 
 with tabMBAL:
     st.header("Acompanhamento das rodadas e parametrização do openserver")
+
 with tabMatBal:
     st.header("aqui vamos usar a planilha do Gusmão")
+
 with tabResults:
     st.header("calma, estamos fazendo")
