@@ -87,6 +87,7 @@ with tabSampling:
     samples = pd.DataFrame(
         {
             'Vol':vol,
+            'RF':rf*np.ones(nruns),
             'Np_Well':np_well_dist,
             'Pi':pi_dist,
             'Fluid':fluid_dist,
@@ -101,7 +102,7 @@ with tabSampling:
     'Experiments'
     st.write(samples)
     'Stats'
-    st.write(samples.describe().loc[['mean', 'std', 'min', 'max']].round(0))
+    st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
 
 
 
