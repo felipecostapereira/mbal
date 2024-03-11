@@ -35,11 +35,11 @@ with tabRes:
         if resType == 'Oil':
             ploto = sns.kdeplot(np.random.normal(np.mean(voip),(voip[1]-voip[0])/6,1000), fill=True)
             ploto.set_xlabel("VOIP")
-            st.pyplot(ploto.figure)
+            st.pyplot(ploto.figure, clear_figure=True)
         else:
             plotg=sns.kdeplot(np.random.normal(np.mean(vgip),(vgip[1]-vgip[0])/6,1000), fill=True)
             plotg.set_xlabel("VGIP")
-            st.pyplot(plotg.figure)
+            st.pyplot(plotg.figure, clear_figure=True)
 
 
     st.divider()
@@ -72,7 +72,7 @@ with tabFluid:
         plotf = sns.barplot(x=fluids, y=fluid_prob, hue=fluids, palette='tab10')
         plotf.set_xlabel('Fluid')
         plotf.set_ylabel('Probability')
-        st.pyplot(plotf.figure)
+        st.pyplot(plotf.figure, clear_figure=True)
 
 with tabSampling:
     nruns = st.number_input('MBAL runs:', 10, None, 100, step=100)
