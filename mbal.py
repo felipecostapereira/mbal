@@ -65,7 +65,10 @@ with tabFluid:
     with col1:
         nfluids = st.number_input('How many Fluids?',1,5,3)
         fluids = [f+1 for f in range(nfluids)]
+
         fluid_prob = [st.number_input(f"Probability/weight of fluid {i+1}", 1,100,1, help=help_strings['norm']) for i in range(nfluids)]
+        st.divider()
+        fluid_files = [st.file_uploader(f"PVT file (fluid {i+1})", help=help_strings['norm']) for i in range(nfluids)]
         fluid_prob = fluid_prob/np.sum(fluid_prob)
 
     with col2:
