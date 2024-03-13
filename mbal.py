@@ -25,7 +25,7 @@ unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
 
 st.subheader('_Reservoir Potential evaluation_')
 
-tabRes, tabFluid, tabVFP, tabSampling, tabSchedule, tabMBAL, tabMatBal,  tabResults =  st.tabs([
+tabRes,tabFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabMatBal,tabResults,tabHelp =  st.tabs([
     'Reservoir:mount_fuji:',
     'Fluid:oil_drum:',
     'VFP:chart_with_upwards_trend:',
@@ -33,7 +33,8 @@ tabRes, tabFluid, tabVFP, tabSampling, tabSchedule, tabMBAL, tabMatBal,  tabResu
     'Schedule:calendar:',
     'MBAL:m:',
     'Spreadsheet:chart_with_downwards_trend:',
-    'Results:signal_strength:'
+    'Results:signal_strength:',
+    'Help:question:',
     ])
 
 with tabRes:
