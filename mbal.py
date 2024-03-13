@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
+import requests
+
 
 help_strings = {
     'sliders': f'(min,max) = ($\mu-3\sigma,\mu+3\sigma$)',
@@ -123,7 +125,34 @@ with tabSchedule:
     interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='teste help', placeholder='One new well every 90 days')
 
 with tabMBAL:
-    st.header("Acompanhamento das rodadas e parametrização do openserver")
+    url = 'http://es00010252:2301/api/production/SatelliteOilLinearIPRWell/calculate'
+
+    for wct in ['0','10','20', '50', '95']:
+        st.write('WCT=',wct)
+        myobj = {
+            "fluid_gor": ["300"],
+            "fluid_api": ["22"],
+            "gas_sg": ["0.7"],
+            "gas_co2": ["0"],
+            "gas_h2s": ["0"],
+            "gas_n2": ["0"],
+            "fluid_wct": [wct],
+            "reservoir_pressure": ["350"],
+            "reservoir_temperature": ["55"],
+            "reservoir_depth": ["6000"],
+            "well_pi": ["12"],
+            "water_depth": ["1400"],
+            "riser_length": ["2000"],
+            "flowline_length": ["2000"],
+            "riser_diameter": ["6"],
+            "flowline_diameter": ["6"],
+            "pipe_type": ["FLX"],
+            "production_column_diameter": ["4.5"],
+            "arrival_pressure": ["90"]
+        }
+        x = requests.post(url, json = myobj)
+        st.write(x.text)
+
 
 with tabMatBal:
     st.header("aqui vamos usar a planilha do Gusmão")
