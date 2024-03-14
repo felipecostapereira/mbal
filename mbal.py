@@ -30,16 +30,16 @@ list_fluids = {
         'Pressure': [2.087852321,44.28194515,142.7348284,269.3171069,424.0287806,526.0681617,529.5140127,536.5463615,550.892353,565.3789916,579.3030422,600.3297651,635.5618326,670.4422827,694.0709747,705.6040267,775.6462208,845.9697089],
         'Bo': [1.097,1.202,1.317,1.473,1.791,2.279,2.276,2.274442,2.265326,2.25621,2.249373,2.235699,2.217467,2.199235,2.18784,2.185561,2.153655,2.126307],
         'Rs': [0,29.21,73.93,130.75,251.89,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96],
-        'Visc': [2,1.5,1.4,1.3,1.1,0.9,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.75,1.8,1.85,1.9,2]
+        'Visc': [2.07,0.8,0.7,0.54,0.4,0.23,0.231,0.234,0.24,0.245,0.251,0.26,0.265,0.272,0.278,0.281,0.29,0.31]
     },
     'ARAM': {
         'Temp' : 121,
-        'Psat' : 700,
-        'Pres' : 900,
-        'Pressure': [5,700,900],
-        'Bo': [1.1,1.8,1.6],
-        'Rs': [300,500,500],
-        'Visc': [1.5, 0.8, 1.1]
+        'Psat' : 444.73323,
+        'Pres' : 651.03323,
+        'Pressure': [1.03323,46.03323,91.03323,141.03323,191.03323,241.03323,291.03323,341.03323,381.03323,421.03323,444.73323,501.03323,551.03323,601.03323,651.03323],
+        'Bo': [1.0848,1.2353,1.3024,1.3727,1.4479,1.5318,1.6341,1.7382,1.9064,2.124,2.2069,2.1699,2.1421,2.118300001,2.0981],
+        'Rs': [0,35.75,59.84,86.83,115.87,148.06,185.33,223.73,281.06,350.68,378.71,378.71,378.71,378.71,378.71],
+        'Visc': [1.632,1.103,0.966,0.841,0.692,0.579,0.487,0.407,0.349,0.295,0.264,0.282,0.297,0.312,0.327]
     }
 }
 
@@ -49,20 +49,29 @@ def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
     pressure_i1 = [list_fluids[analogue]['Pressure'][0] + (psat - list_fluids[analogue]['Pressure'][0])*(Px - list_fluids[analogue]['Pressure'][0])/(list_fluids[analogue]['Psat']-list_fluids[analogue]['Pressure'][0]) for Px in list_fluids[analogue]['Pressure'] if Px <= list_fluids[analogue]['Psat']]
     pressure_i2 = [psat+ (pres - psat)*(Px - list_fluids[analogue]['Psat'])/(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat']) for Px in list_fluids[analogue]['Pressure'] if Px > list_fluids[analogue]['Psat']]
     pressure_i = pressure_i1 + pressure_i2
+    
 
+    index_psat = list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Psat'])
+    index_pres = list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Pres'])
     bo_i0 = list_fluids[analogue]['Bo'][0]*(1 + (temp - list_fluids[analogue]['Temp'])*0.04/35)
     if tipo == "Saturation Pressure":
-        fator_Bo = (bo-bo_i0)/(list_fluids[analogue]['Bo'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Psat'])]-bo_i0)
-        fator_Rs = rs/list_fluids[analogue]['Rs'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Psat'])]
-        fator_visc = visc/list_fluids[analogue]['Visc'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Psat'])]
+        fator_Bo = (bo-bo_i0)/(list_fluids[analogue]['Bo'][index_psat]-bo_i0)
+        fator_Rs = rs/list_fluids[analogue]['Rs'][index_psat]
+        fator_visc = visc/list_fluids[analogue]['Visc'][index_psat]
+        visc_s = visc
     else:
-        fator_Bo = (bo-bo_i0)/(list_fluids[analogue]['Bo'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Pres'])]-bo_i0)
-        fator_Rs = rs/list_fluids[analogue]['Rs'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Pres'])]
-        fator_visc = visc/list_fluids[analogue]['Visc'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Pres'])]
-
-    bo_i = [bo_i0+(Bx-bo_i0)*fator_Bo for Bx in list_fluids[analogue]['Bo']]
+        fator_Bo = (bo-bo_i0)*(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat'])/((list_fluids[analogue]['Bo'][index_pres]-list_fluids[analogue]['Bo'][index_psat])*(pres-psat)+(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat'])*(list_fluids[analogue]['Bo'][index_psat]-bo_i0))
+        fator_Rs = rs/list_fluids[analogue]['Rs'][index_pres]
+        visc_s = list_fluids[analogue]['Visc'][index_psat] + visc - list_fluids[analogue]['Visc'][index_pres]
+        fator_visc = visc_s/list_fluids[analogue]['Visc'][index_psat]
+    
+    bo_i1 = [bo_i0+(Bx-bo_i0)*fator_Bo for Bx in list_fluids[analogue]['Bo'] if list_fluids[analogue]['Bo'].index(Bx) <= index_psat]
+    bo_i2 = [bo_i1[-1]+(Bx-list_fluids[analogue]['Bo'][index_psat])*fator_Bo*(pres-psat)/(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat']) for Bx in list_fluids[analogue]['Bo'] if list_fluids[analogue]['Bo'].index(Bx) > index_psat]
+    bo_i = bo_i1 + bo_i2
     rs_i = [Rx*fator_Rs for Rx in list_fluids[analogue]['Rs']]
-    visc_i = [Vx*fator_visc for Vx in list_fluids[analogue]['Visc']]
+    visc_i1 = [(Vx-list_fluids[analogue]['Visc'][index_psat])*fator_visc*(pressure_i[list_fluids[analogue]['Visc'].index(Vx)]-psat)/(list_fluids[analogue]['Pressure'][list_fluids[analogue]['Visc'].index(Vx)]-list_fluids[analogue]['Psat']) + visc_s for Vx in list_fluids[analogue]['Visc'] if list_fluids[analogue]['Visc'].index(Vx) < index_psat]
+    visc_i2 = [Vx + visc_s - list_fluids[analogue]['Visc'][index_psat] for Vx in list_fluids[analogue]['Visc'] if list_fluids[analogue]['Visc'].index(Vx) >= index_psat ]
+    visc_i = visc_i1 + visc_i2
     return(pressure_i,bo_i,rs_i,visc_i)
 
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
@@ -185,22 +194,22 @@ with tabFluid:
                     pressures,bos,rsss,viscs = normalize_fluid(selected_analogue1,Temp_ref,Pres_ref,Psat_ref,Bo_ref,Rs_ref,Visc_ref,pres_type)
             with col4:
                 fig, axs = plt.subplots(ncols=1,nrows=3,figsize=[5,15])
-                i = 0
+                
                 if fluid_input == "Analogue":
                     axs[0].plot(list_fluids[selected_analogue1]['Pressure'],list_fluids[selected_analogue1]['Bo'],'b-',label=selected_analogue1)
-                    axs[0].plot(pressures,bos,'r-',label='Fluid 1')
+                    axs[0].plot(pressures,bos,'r-',label=f'Fluid {f}')
                     axs[0].set_xlabel('Pressure')
                     axs[0].set_ylabel('Bo (m³/m³)')
                     axs[0].legend()
 
                     axs[1].plot(list_fluids[selected_analogue1]['Pressure'],list_fluids[selected_analogue1]['Rs'],'b-',label=selected_analogue1)
-                    axs[1].plot(pressures,rsss,'r-',label='Fluid 1')
+                    axs[1].plot(pressures,rsss,'r-',label=f'Fluid {f}')
                     axs[1].set_xlabel('Pressure')
                     axs[1].set_ylabel('Rs (m³/m³)')
                     axs[1].legend()
 
                     axs[2].plot(list_fluids[selected_analogue1]['Pressure'],list_fluids[selected_analogue1]['Visc'],'b-',label=selected_analogue1)
-                    axs[2].plot(pressures,viscs,'r-',label='Fluid 1')
+                    axs[2].plot(pressures,viscs,'r-',label=f'Fluid {f+1}')
                     axs[2].set_xlabel('Pressure')
                     axs[2].set_ylabel('Visc (cp)')
                     axs[2].legend()
