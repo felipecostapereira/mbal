@@ -20,6 +20,39 @@ list_mecanismos = {
     'Gas': ['Depleção'],
 }
 
+list_fluids = {
+    'SEAT': {
+        'Temp' : 124,
+        'Psat' : 526.0681617,
+        'Pres' : 694.0709747,
+        'Pressure': [2.087852321,44.28194515,142.7348284,269.3171069,424.0287806,526.0681617,529.5140127,536.5463615,550.892353,565.3789916,579.3030422,600.3297651,635.5618326,670.4422827,694.0709747,705.6040267,775.6462208,845.9697089],
+        'Bo': [1.097,1.202,1.317,1.473,1.791,2.279,2.276,2.274442,2.265326,2.25621,2.249373,2.235699,2.217467,2.199235,2.18784,2.185561,2.153655,2.126307],
+        'Rs': [0,29.21,73.93,130.75,251.89,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96,423.96]
+    },
+    'ARAM': {
+        'Temp' : 121,
+        'Psat' : 700,
+        'Pres' : 900,
+        'Pressure': [5,700,900],
+        'Bo': [1.1,1.8,1.6],
+        'Rs': [300,500,500]
+    }
+}
+
+def normalize_fluid(analogue,temp,pres,psat,bo,tipo):
+    pressure_i1 = [list_fluids[analogue]['Pressure'][0] + (psat - list_fluids[analogue]['Pressure'][0])*(Px - list_fluids[analogue]['Pressure'][0])/(list_fluids[analogue]['Psat']-list_fluids[analogue]['Pressure'][0]) for Px in list_fluids[analogue]['Pressure'] if Px <= list_fluids[analogue]['Psat']]
+    pressure_i2 = [psat+ (pres - psat)*(Px - list_fluids[analogue]['Psat'])/(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat']) for Px in list_fluids[analogue]['Pressure'] if Px > list_fluids[analogue]['Psat']]
+    pressure_i = pressure_i1 + pressure_i2
+ 
+    bo_i0 = list_fluids[analogue]['Bo'][0]*(1 + (temp - list_fluids[analogue]['Temp'])*0.04/35)
+    if tipo == "Saturation Pressure":
+        fator_Bo = (bo-bo_i0)/(list_fluids[analogue]['Bo'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Psat'])]-bo_i0)
+    else:
+        fator_Bo = (bo-bo_i0)/(list_fluids[analogue]['Bo'][list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Pres'])]-bo_i0)
+    
+    bo_i = [bo_i0+(Bx-bo_i0)*fator_Bo for Bx in list_fluids[analogue]['Bo']]
+    return(pressure_i,bo_i)
+
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
 unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
 
@@ -48,7 +81,7 @@ with tabRes:
             selected_mecanisms = st.multiselect(f'Production Mechanism - {resType}', list_mecanismos[resType])
 
         with col2:
-            voip_dist = st.selectbox('VOIP distribution',options=['Normal','Uniform','Triangular'])
+            voip_dist = st.selectbox('VOIP distribution',options=['Normal','Uniform','Triangular','Lognormal'])
             if resType == 'Oil':
                 voip = st.slider('VOIP (MMBBL)', 0, 5000, (1000,3000), help=help_strings['sliders'])
                 vgip = (0,0)
@@ -62,14 +95,14 @@ with tabRes:
 
             if resType == 'Oil':
                 if voip_dist == 'Normal':                   ploto = sns.kdeplot(np.random.normal(voip_mean,voip_stdev,nsamples), fill=True)
-                elif voip_dist == 'Lognormal':              ploto = sns.kdeplot(np.random.normal(np.log(voip_mean+(voip_stdev**2)/2),5,nsamples), fill=True)
+                elif voip_dist == 'Lognormal':              ploto = sns.kdeplot(np.e**(np.random.normal(np.log(voip_mean),(np.log(voip[1])-np.log(voip[0]))/6,nsamples)), fill=True)
                 elif voip_dist == 'Triangular':             ploto = sns.kdeplot(np.random.triangular(voip[0], voip_mean, voip[1], nsamples), fill=True)
                 else:                                       ploto = sns.kdeplot(np.random.uniform(voip[0],voip[1], nsamples), fill=True)
                 ploto.set_xlabel("VOIP")
                 st.pyplot(ploto.figure, clear_figure=True)
             else:
                 if voip_dist == 'Normal':                   plotg = sns.kdeplot(np.random.normal(vgip_mean,vgip_stdev,nsamples), fill=True)
-                elif voip_dist == 'Lognormal':              plotg = sns.kdeplot(np.random.normal(vgip_mean,vgip_stdev,nsamples), fill=True)
+                elif voip_dist == 'Lognormal':              plotg = sns.kdeplot(np.e**(np.random.normal(np.log(vgip_mean),(np.log(vgip[1])-np.log(vgip[0]))/6,nsamples)), fill=True)
                 elif voip_dist == 'Triangular':             plotg = sns.kdeplot(np.random.triangular(vgip[0],vgip_mean,vgip[1],nsamples), fill=True)
                 else:                                       plotg = sns.kdeplot(np.random.uniform(vgip[0],vgip[1],nsamples), fill=True)
                 plotg.set_xlabel("VGIP")
@@ -105,13 +138,14 @@ with tabRes:
 
 with tabFluid:
     col1, col2 = st.columns(2)
+    list_analogues = ["SEAT","ARAM"]
     with col1:
-        nfluids = st.number_input('How many Fluids?',1,5,3)
+        nfluids = st.number_input('How many Fluids?',1,3,1)
         fluids = [f+1 for f in range(nfluids)]
         st.divider()
         fluid_prob = [st.number_input(f"Probability/weight of fluid {i+1}", 1,100,1, help=help_strings['norm']) for i in range(nfluids)]
         st.divider()
-        fluid_files = [st.file_uploader(f"PVT file (fluid {i+1})", help=help_strings['pvt']) for i in range(nfluids)]
+        
         fluid_prob = fluid_prob/np.sum(fluid_prob)
 
     with col2:
@@ -119,6 +153,89 @@ with tabFluid:
         plotf.set_xlabel('Fluid')
         plotf.set_ylabel('Probability')
         st.pyplot(plotf.figure, clear_figure=True)
+
+    st.divider()  
+
+    col3,col4 = st.columns(2)
+    with col3:
+        fluid_input = st.radio(f'Fluid 1 selection:',['Analogue','Input File'], horizontal=True)
+        if fluid_input == "Input File":
+            fluid_files = st.file_uploader(f"PVT file (fluid 1)", help=help_strings['pvt'])
+        else:
+            selected_analogue1 = st.selectbox(f'Select Analogue Fluid 1', list_analogues, key = 1)
+            Temp_ref = st.number_input('Temp (ºC)',15,200,80, key = 2)
+            Pres_ref = st.number_input('Pres (kgf/cm²)',200,1000,500, key = 3)
+            Psat_ref = st.number_input('Psat (kgf/cm²)',150,800,350, key = 4)
+            pres_type = st.radio('Reference Pressure for Analogue Properties:',['Saturation Pressure','Reservoir Pressure'], horizontal=True, key = 9)
+            Bo_ref = st.number_input('Bo (m³/m³)',1.,3.,1.7,step=1.,format="%.2f", key = 5)
+            Rs_ref = st.number_input('Rs (m³/m³)',50,8000,350, key = 6)
+
+            pressures,bos = normalize_fluid(selected_analogue1,Temp_ref,Pres_ref,Psat_ref,Bo_ref,pres_type)
+    with col4:
+        fig, axs = plt.subplots(ncols=1,nrows=1) 
+        i = 0
+        if fluid_input == "Input File":
+            pass
+        else:             
+            axs.plot(list_fluids[selected_analogue1]['Pressure'],list_fluids[selected_analogue1]['Bo'],'b-',label='Original')
+            axs.plot(pressures,bos,'r-',label='Analogue Fluid')
+            st.pyplot(fig.figure, clear_figure=True)
+
+    st.divider() 
+
+    if nfluids > 1:
+        col5,col6 = st.columns(2)
+        with col5:
+            fluid_input = st.radio(f'Fluid 2 selection:',['Analogue','Input File'], horizontal=True)
+            if fluid_input == "Input File":
+                fluid_files = st.file_uploader(f"PVT file (fluid 2)", help=help_strings['pvt'])
+            else:
+                selected_analogue2 = st.selectbox(f'Select Analogue Fluid 2', list_analogues, key = 10)
+                Temp_ref = st.number_input('Temp (ºC)',15,200,80, key = 11)
+                Pres_ref = st.number_input('Pres (kgf/cm²)',200,1000,500, key = 12)
+                Psat_ref = st.number_input('Psat (kgf/cm²)',150,800,350, key = 13)
+                pres_type = st.radio('Reference Pressure for Analogue Properties:',['Saturation Pressure','Reservoir Pressure'], horizontal=True, key = 19)
+                Bo_ref = st.number_input('Bo (m³/m³)',1.,3.,1.7,step=1.,format="%.2f", key = 14)
+                Rs_ref = st.number_input('Rs (m³/m³)',50,8000,350, key = 15)
+
+                pressures,bos = normalize_fluid(selected_analogue2,Temp_ref,Pres_ref,Psat_ref,Bo_ref,pres_type)
+        with col6:
+            fig, axs = plt.subplots(ncols=1,nrows=1) 
+            i = 0
+            if fluid_input == "Input File":
+                pass
+            else:             
+                axs.plot(list_fluids[selected_analogue2]['Pressure'],list_fluids[selected_analogue2]['Bo'],'b-',label='Original')
+                axs.plot(pressures,bos,'r-',label='Analogue Fluid')
+                st.pyplot(fig.figure, clear_figure=True)
+
+        st.divider() 
+
+    if nfluids > 2:
+        col7,col8 = st.columns(2)
+        with col7:
+            fluid_input = st.radio(f'Fluid 3 selection:',['Analogue','Input File'], horizontal=True)
+            if fluid_input == "Input File":
+                fluid_files = st.file_uploader(f"PVT file (fluid 3)", help=help_strings['pvt'])
+            else:
+                selected_analogue3 = st.selectbox(f'Select Analogue Fluid 3', list_analogues, key = 20)
+                Temp_ref = st.number_input('Temp (ºC)',15,200,80, key = 21)
+                Pres_ref = st.number_input('Pres (kgf/cm²)',200,1000,500, key = 22)
+                Psat_ref = st.number_input('Psat (kgf/cm²)',150,800,350, key = 23)
+                pres_type = st.radio('Reference Pressure for Analogue Properties:',['Saturation Pressure','Reservoir Pressure'], horizontal=True, key = 29)
+                Bo_ref = st.number_input('Bo (m³/m³)',1.,3.,1.7,step=1.,format="%.2f", key = 24)
+                Rs_ref = st.number_input('Rs (m³/m³)',50,8000,350, key = 25)
+
+                pressures,bos = normalize_fluid(selected_analogue3,Temp_ref,Pres_ref,Psat_ref,Bo_ref,pres_type)
+        with col8:
+            fig, axs = plt.subplots(ncols=1,nrows=1) 
+            i = 0
+            if fluid_input == "Input File":
+                pass
+            else:             
+                axs.plot(list_fluids[selected_analogue3]['Pressure'],list_fluids[selected_analogue3]['Bo'],'b-',label='Original')
+                axs.plot(pressures,bos,'r-',label='Analogue Fluid')
+                st.pyplot(fig.figure, clear_figure=True)
 
 with tabSampling:
     st.subheader('MBAL Runs', divider='blue')
