@@ -5,8 +5,27 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
 import requests
+from stqdm import stqdm
+import h5py
 
 nsamples = 1000
+
+analogsModels = {
+    'SGT_BASE':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso20_0906_SPILL_AJGEO_5P4IW_LIFT_R8_UEP120.sr3',
+    'SGT_PESS':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso11_Ajus09set21_INTERMED_AJGEO_malha3_InjWAG_crono_ap.sr3',
+    'SGT_OTIM':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso23_INTERMED_AJGEO_17ago21_v3A_malha1_hphiso_InjA_500_s98ig_iw4iw6iw8_ap.sr3',
+    # 'ORION_OTIM':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Versao_fev2022/OTIM_INT_EMI_SW_SGT_VFP17KM_malha6_2032_uep225.sr3',
+    # 'URTIGA_6600':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6600_vfps6ID_09.sr3',
+    # 'URTIGA_6650':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6650_6pol_120kbpd_5P_3IA.sr3',
+    # 'URTIGA_6700':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6700_6pol_120kbpd_2injSUL_7P5IA_vf.sr3',
+    'ARAM_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_POS_POCO/1525_ARAM_KOTIM_6450_FCARC_SWO_RC2_KMIN_9P6IW.sr3',
+    'ARAM_PESS':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_POS_POCO/1525_ARAM_KOTIM_6450_FCARC_SWO_RC1_KMIN_5P4IW.sr3',
+    # 'ARAM_PREPOCO_PESS':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/0721_ARAM_GPSM_6375_CMDR_FCARC_5.2IG_RINJ6_POST.sr3',
+    # 'ARAM_PREPOCO_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/1525_ARAM_GMDR_6375_CPSM_FCARC_10.7IW_PROD1000.sr3',
+    # 'ARAM_PREPOCO_OTIM':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/1444_ARAM_GMDR_6700_CPSM_FSGT_8.5IW_9.7IW_8.6IW_PROD1000.sr3',
+    'UIR_ARAUCARIA':'L:/res/santos/presal_pre_projetos/Uirapuru/ER/3_Modelo_de_Simulacao/RUNS/MODELO_BU2E/UIR_EXPORT_3P2IA_SEMCDEPTH_CSP_ARA.sr3',
+    'UIR_PINHAO':'L:/res/santos/presal_pre_projetos/Uirapuru/ER/3_Modelo_de_Simulacao/RUNS/MODELO_BU2E/UIR_EXPORT_4P4IW_SEMCDEPTH_CSP_PIN.sr3'
+}
 
 help_strings = {
     'sliders': f'(min,max) = ($\mu-3\sigma,\mu+3\sigma$) if Normal',
@@ -23,6 +42,7 @@ list_mecanismos = {
 }
 
 fluid_input_options = ['Analogue','Correlation','Input File']
+groupBy_options = ['Modelo','Res']
 
 list_fluids = {
     'SEAT': {
@@ -51,7 +71,7 @@ def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
     pressure_i1 = [list_fluids[analogue]['Pressure'][0] + (psat - list_fluids[analogue]['Pressure'][0])*(Px - list_fluids[analogue]['Pressure'][0])/(list_fluids[analogue]['Psat']-list_fluids[analogue]['Pressure'][0]) for Px in list_fluids[analogue]['Pressure'] if Px <= list_fluids[analogue]['Psat']]
     pressure_i2 = [psat+ (pres - psat)*(Px - list_fluids[analogue]['Psat'])/(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat']) for Px in list_fluids[analogue]['Pressure'] if Px > list_fluids[analogue]['Psat']]
     pressure_i = pressure_i1 + pressure_i2
-    
+
 
     index_psat = list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Psat'])
     index_pres = list_fluids[analogue]['Pressure'].index(list_fluids[analogue]['Pres'])
@@ -66,7 +86,7 @@ def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
         fator_Rs = rs/list_fluids[analogue]['Rs'][index_pres]
         visc_s = list_fluids[analogue]['Visc'][index_psat] + visc - list_fluids[analogue]['Visc'][index_pres]
         fator_visc = visc_s/list_fluids[analogue]['Visc'][index_psat]
-    
+
     bo_i1 = [bo_i0+(Bx-bo_i0)*fator_Bo for Bx in list_fluids[analogue]['Bo'] if list_fluids[analogue]['Bo'].index(Bx) <= index_psat]
     bo_i2 = [bo_i1[-1]+(Bx-list_fluids[analogue]['Bo'][index_psat])*fator_Bo*(pres-psat)/(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat']) for Bx in list_fluids[analogue]['Bo'] if list_fluids[analogue]['Bo'].index(Bx) > index_psat]
     bo_i = bo_i1 + bo_i2
@@ -107,12 +127,83 @@ list_krels = {
     }
 }
 
+@st.cache_data
+def getModels(selectedModels):
+    dfWell = pd.DataFrame()
+    dfSector = pd.DataFrame()
+    df3D = pd.DataFrame()
+    for key in stqdm(selectedModels):
+        f = h5py.File(analogsModels.get(key), 'r')
+
+        # tempos
+        mtt = f['/General/MasterTimeTable'] # (0, 0.  , 20280101.  ), (1, 0.1 , 20280101.1 ),
+        sDates = [i[2] for i in mtt]
+        times = f['TimeSeries/SECTORS/Timesteps'] # [0,1,2,3,4...]
+
+        # datasets
+        wVars = f['TimeSeries/WELLS/Variables']
+        wOrigins = f['TimeSeries/WELLS/Origins']
+        wData = f['TimeSeries/WELLS/Data']
+        gVars = f['TimeSeries/GROUPS/Variables']
+        gOrigins = f['TimeSeries/GROUPS/Origins']
+        gData = f['TimeSeries/GROUPS/Data']
+        sVars = f['TimeSeries/SECTORS/Variables']
+        sOrigins = f['TimeSeries/SECTORS/Origins']
+        sData = f['TimeSeries/SECTORS/Data']
+
+        # indexes
+        w_Np_i = np.where(wVars[()] == b'OILVOLSC')[0][0]
+        w_Wp_i = np.where(wVars[()] == b'WATVOLSC')[0][0]
+        s_N_i = np.where(sVars[()] == b'OILSECSU')[0][0]
+        s_FR_i = np.where(sVars[()] == b'OILSECRECO')[0][0]
+        g_Np_i = np.where(gVars[()] == b'OILVOLSC')[0][0]
+        g_Wp_i = np.where(gVars[()] == b'WATVOLSC')[0][0]
+        g_Field_i = np.where((gOrigins[:] == b'FIELD-PRO') | (gOrigins[:] == b'Field-PRO'))[0][0]
+        s_Field_i = np.where((sOrigins[:] == b'FIELD') | (sOrigins[:] == b'Field'))[0][0]
+
+        # Well
+        for iw,well in enumerate(wOrigins):
+            dfWell = pd.concat(
+                [dfWell, pd.DataFrame({
+                        'Res': [key.split('_')[0]],
+                        'Modelo': [key],
+                        'Poço': [well.decode()],
+                        'Np': int(6.29/1e6*wData[-1:, w_Np_i, iw]),
+                        'Np+Wp': int(6.29/1e6*(wData[-1:, w_Wp_i, iw]+wData[-1:, w_Np_i, iw]))})
+                ])
+
+        # Sector Field
+        dfSector = pd.concat([dfSector,pd.DataFrame({
+            'Res': key.split('_')[0],
+            'Modelo': key,
+            'N': int(6.29/1e6*sData[0, s_N_i, s_Field_i]),
+            'FR': sData[-1:, s_FR_i, s_Field_i]
+            })
+        ])
+
+        # por = f['SpatialProperties/000000/POR']
+        # k = 1000*np.array(f['SpatialProperties/000000/PERMI'])
+        # sw = f['SpatialProperties/000000/SW']
+
+        # df3D = pd.concat(
+        #     [df3D, pd.DataFrame({
+        #         'Res': key.split('_')[0],
+        #         'Modelo': key,
+        #         'POR': por,
+        #         'K': np.log(k),
+        #         'SW': sw
+        #     })]
+        # )
+        f.close()
+
+    return dfWell, dfSector #, df3D
+
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
 unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
 
 st.subheader('_Reservoir Potential Evaluation_')
 
-tabRes,tabFluid,tabRockFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabMatBal,tabResults,tabHelp =  st.tabs([
+tabRes,tabFluid,tabRockFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabResults,tabAnalog,tabHelp =  st.tabs([
     'Reservoir:mount_fuji:',
     'Fluid:oil_drum:',
     'Rock-Fluid:earth_americas:',
@@ -120,14 +211,14 @@ tabRes,tabFluid,tabRockFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabMatBal,ta
     'Sampling:game_die:',
     'Schedule:calendar:',
     'MBAL:m:',
-    'Spreadsheet:chart_with_downwards_trend:',
     'Results:signal_strength:',
+    'Analogs:dart:',
     'Help:question:',
     ])
 
 with tabRes:
-    with st.expander('Reservoir Data'):
-        st.subheader('Reservoir Data', divider='blue')
+    st.subheader('Reservoir Data', divider='blue')
+    with st.expander('Volumes, Mechanisms, Recoveries'):
         col1, col2 = st.columns(2)
         with col1:
             resType = st.radio('Reservoir type:',['Oil','Gas'], horizontal=True)
@@ -163,8 +254,12 @@ with tabRes:
                 plotg.set_xlabel("VGIP")
                 st.pyplot(plotg.figure, clear_figure=True)
 
+    with st.expander('Relative Permeabilities'):
+        st.write('Corey? Tables?')
+
+
+    st.subheader('Production Metrics', divider='blue')
     with st.expander('Production Metrics'):
-        st.subheader('Production Metrics', divider='blue')
 
         col3, col4 = st.columns(2)
         with col3:
@@ -228,7 +323,7 @@ with tabFluid:
                     pressures,bos,rsss,viscs = normalize_fluid(selected_analogue1,Temp_ref,Pres_ref,Psat_ref,Bo_ref,Rs_ref,Visc_ref,pres_type)
             with col4:
                 fig, axs = plt.subplots(ncols=1,nrows=3,figsize=[5,15])
-                
+
                 if fluid_input == "Analogue":
                     axs[0].plot(list_fluids[selected_analogue1]['Pressure'],list_fluids[selected_analogue1]['Bo'],'b-',label=selected_analogue1)
                     axs[0].plot(pressures,bos,'r-',label=f'Fluid {f}')
@@ -499,8 +594,24 @@ with tabMBAL:
     #     st.write(x.text)
 
 
-with tabMatBal:
-    st.header("aqui vamos usar a planilha do Gusmão")
+with tabAnalog:
+    # selectedRes = st.multiselect('Analog Reservoir:',dfWell['Res'].unique().tolist())
+    selectedModels = st.multiselect('Analog Models:',analogsModels.keys())
+
+    if len(selectedModels):
+        dfWell,dfSector = getModels(selectedModels)
+        dfWell = dfWell[dfWell['Np'] > 0]
+        dfSector['Np'] = dfSector['N'] * dfSector['FR'] / 100
+
+        groupBy_option = st.radio('Group Vars By:', groupBy_options, horizontal=True)
+
+        st.write('Well Data (Np)')
+        st.write(dfWell.groupby(groupBy_option)['Np'].agg(['sum','mean','count']))
+
+        st.write('Field Data')
+        # dfSector
+        st.write(dfSector.groupby(groupBy_option)[['Np','N','FR']].mean())
+
 
 with tabResults:
     st.header("calma, estamos fazendo")
