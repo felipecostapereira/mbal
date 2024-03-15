@@ -13,6 +13,8 @@ help_strings = {
     'rf': f'Initial guess on the recovery factor, to populate number of wells in experiments',
     'norm': f'Values will be always noramlized',
     'pvt': f'Please attach PVT file for this fluid',
+    'krel': f'Please attach SWT tables',
+    'krel_consistency': f'If you select this option all ranges will be defined based only on "Swi" to ensure consistency with original selected anaogue'
 }
 
 list_mecanismos = {
@@ -43,7 +45,7 @@ list_fluids = {
     }
 }
 
-list_analogues = ["SEAT","ARAM"]
+list_analogues = ["ARAM","SEAT"]
 
 def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
     pressure_i1 = [list_fluids[analogue]['Pressure'][0] + (psat - list_fluids[analogue]['Pressure'][0])*(Px - list_fluids[analogue]['Pressure'][0])/(list_fluids[analogue]['Psat']-list_fluids[analogue]['Pressure'][0]) for Px in list_fluids[analogue]['Pressure'] if Px <= list_fluids[analogue]['Psat']]
@@ -74,14 +76,46 @@ def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
     visc_i = visc_i1 + visc_i2
     return(pressure_i,bo_i,rs_i,visc_i)
 
+krel_input_options = ['Analogue','User Defined']
+
+def calc_corey(kro,krw,swi,sor,no,nw):
+    sw = np.linspace(swi,1-sor,25) 
+    swd = [(swx - swi)/((1 - sor) - swi) for swx in sw]
+    kro_corey = [kro*((1-swx)**no) for swx in swd]
+    krw_corey = [krw*(swx**nw) for swx in swd]
+
+    return(sw,kro_corey,krw_corey)
+
+list_analogues_krel = ["SEAT","ACFC"]
+
+list_krels = {
+    'SEAT': {
+        'kro' : 0.815,
+        'krw' : 0.461,
+        'swi' : 0.27,
+        'sor': 0.365,
+        'no': 4.717,
+        'nw': 1.836
+    },
+    'ACFC': {
+        'kro' : 0.84,
+        'krw' : 0.47,
+        'swi' : 0.19,
+        'sor': 0.405,
+        'no': 2.,
+        'nw': 2.
+    }
+}
+
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
 unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
 
 st.subheader('_Reservoir Potential Evaluation_')
 
-tabRes,tabFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabMatBal,tabResults,tabHelp =  st.tabs([
+tabRes,tabFluid,tabRockFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabMatBal,tabResults,tabHelp =  st.tabs([
     'Reservoir:mount_fuji:',
     'Fluid:oil_drum:',
+    'Rock-Fluid:earth_americas:',
     'VFP:chart_with_upwards_trend:',
     'Sampling:game_die:',
     'Schedule:calendar:',
@@ -189,7 +223,7 @@ with tabFluid:
                     pres_type = st.radio('Reference Pressure for Analogue Properties:',['Saturation Pressure','Reservoir Pressure'], horizontal=True, key = f'pres_type{f}')
                     Bo_ref = st.number_input('Bo (m³/m³)',1.,3.,1.7,step=1.,format="%.2f", key = f'bo_ref{f}')
                     Rs_ref = st.number_input('Rs (m³/m³)',50,8000,350, key = f'rs_ref{f}')
-                    Visc_ref = st.number_input('Viscosidade (cp)',0.0001,5.,0.8, key = f'visc_ref{f}')
+                    Visc_ref = st.number_input('Viscosidade (cp)',0.0001,5.,0.35, key = f'visc_ref{f}')
 
                     pressures,bos,rsss,viscs = normalize_fluid(selected_analogue1,Temp_ref,Pres_ref,Psat_ref,Bo_ref,Rs_ref,Visc_ref,pres_type)
             with col4:
@@ -209,7 +243,7 @@ with tabFluid:
                     axs[1].legend()
 
                     axs[2].plot(list_fluids[selected_analogue1]['Pressure'],list_fluids[selected_analogue1]['Visc'],'b-',label=selected_analogue1)
-                    axs[2].plot(pressures,viscs,'r-',label=f'Fluid {f+1}')
+                    axs[2].plot(pressures,viscs,'r-',label=f'Fluid {f}')
                     axs[2].set_xlabel('Pressure')
                     axs[2].set_ylabel('Visc (cp)')
                     axs[2].legend()
@@ -217,6 +251,186 @@ with tabFluid:
                     st.pyplot(fig.figure, clear_figure=True)
                 else:
                     pass
+
+with tabRockFluid:
+    st.subheader('Relative Permeability Set Definition', divider='blue')
+
+    col3,col4 = st.columns(2)
+
+    with col3:
+        nkrels = st.number_input('How many Krel sets?',1,3,1,help='Choose "1" if you wish to input a continuous distribution based on the curve parameters')
+        krels = [f+1 for f in range(nkrels)]
+        krel_prob = [st.number_input(f"Probability/weight of Krel {i+1}", 1,100,1, help=help_strings['norm']) for i in range(nkrels)]
+        krel_prob = krel_prob/np.sum(krel_prob)
+
+    with col4:
+        fig, plotk =  plt.subplots(ncols=1,nrows=1,figsize=[5,5])
+        plotk = sns.barplot(x=krels, y=krel_prob, hue=krels, palette='tab10')
+        plotk.set_xlabel('Krel')
+        plotk.set_ylabel('Probability')
+        st.pyplot(plotk.figure, clear_figure=True)
+
+    st.subheader('Relative Permeability Curves', divider='blue')
+    for kr in krels:
+        with st.expander(f'Krel {kr}: (Probability = {100*krel_prob[kr-1]:.0f}%)'):
+
+            col1,col2 = st.columns(2)
+
+            with col1:
+                if nkrels == 1:
+                    uncertainty_krel = st.checkbox("Do you wish to perform uncertainty assessment on the krel set?",key=f'unc_{kr}')
+
+                    if uncertainty_krel:
+                        krel_selection = st.radio('Select Input Type',krel_input_options, horizontal=True,key=f'unc1_{kr}')
+                        kr_unc = 1
+                    else:
+                        krel_selection = st.radio('Select Input Type',krel_input_options+['Input File'], horizontal=True,key=f'unc0_{kr}')
+                        kr_unc = 0
+                else:
+                    krel_selection = st.radio('Select Input Type',krel_input_options+['Input File'], horizontal=True,key=f'dic_{kr}')
+                    kr_unc = 0
+
+                if krel_selection == "Input File":
+                    krel_files = st.file_uploader(f"KREL file", help=help_strings['krel'],key=f'krel_{kr}')
+
+                elif krel_selection == "User Defined":
+                    if kr_unc == 0:
+                        kro_user = st.number_input('kro',0.,1.,0.8,key=f'nin_{kr}')
+                        krw_user = st.number_input('krw',0.,1.,0.5,key=f'nin1_{kr}')
+                        swi_user = st.number_input('swi',0.,1.,0.3,key=f'nin2_{kr}')
+                        sor_user = st.number_input('sor',0.,1.,0.3,key=f'nin3_{kr}')
+                        no_user = st.number_input('no',0.,10.,4.,key=f'nin4_{kr}')
+                        nw_user = st.number_input('nw',0.,10.,1.5,key=f'nin5_{kr}')
+                    else:
+                        krel_properties_dist = st.selectbox('Parameters distribution',options=['Normal','Uniform','Triangular','Lognormal'],key='krel_param')
+                        kro_range = st.slider('kro', 0., 1., (0.6,0.9), help=help_strings['sliders'])
+                        krw_range = st.slider('krw', 0., 1., (0.4,0.6), help=help_strings['sliders'])
+                        swi_range = st.slider('swi', 0., 1., (0.2,0.3), help=help_strings['sliders'])
+                        sor_range = st.slider('sor', 0., 1., (0.2,0.3), help=help_strings['sliders'])
+                        no_range = st.slider('no', 0., 10., (3.,5.), help=help_strings['sliders'])
+                        nw_range = st.slider('nw', 0., 10., (1.5,2.5), help=help_strings['sliders'])
+
+                        kro_user = np.mean(kro_range)
+                        krw_user = np.mean(krw_range)
+                        swi_user = np.mean(swi_range)
+                        sor_user = np.mean(sor_range)
+                        no_user = np.mean(no_range)
+                        nw_user = np.mean(nw_range)
+
+                    sw,kro,krw = calc_corey(kro_user,krw_user,swi_user,sor_user,no_user,nw_user)
+                
+                else:
+                    selected_analogue_krel = st.selectbox(f'Select Analogue Krel', list_analogues_krel,key=f'{kr}')
+                    kro_an = list_krels[selected_analogue_krel]['kro']
+                    krw_an = list_krels[selected_analogue_krel]['krw']
+                    swi_an = list_krels[selected_analogue_krel]['swi']
+                    sor_an = list_krels[selected_analogue_krel]['sor']
+                    no_an = list_krels[selected_analogue_krel]['no']
+                    nw_an = list_krels[selected_analogue_krel]['nw']
+
+                    st.text(f'kro = {kro_an}')
+                    st.text(f'krw = {krw_an}')
+                    st.text(f'swi = {swi_an}')
+                    st.text(f'sor = {sor_an}')
+                    st.text(f'no = {no_an}')
+                    st.text(f'nw = {nw_an}')
+
+                    sw,kro,krw = calc_corey(kro_an,krw_an,swi_an,sor_an,no_an,nw_an)
+
+            with col2:
+                if krel_selection == "Input File":
+                    pass
+                else:
+                    fig, axs = plt.subplots(ncols=1,nrows=1,figsize=[5,5])
+                    axs.plot(sw,kro,'b-')
+                    axs.plot(sw,krw,'b-')
+                    axs.set_xlim(0,1)
+                    axs.set_ylim(0,1)
+                    if krel_selection == "Analogue":
+                        axs.set_title(f'Analogue {selected_analogue_krel}')
+                    else:
+                        if kr_unc == 0:
+                            axs.set_title(f'Defined Krel {kr}')
+                        else:
+                            axs.set_title(f'Average Krel {kr}')
+
+                    st.pyplot(fig.figure, clear_figure=True)
+            
+            if krel_selection == "Analogue":
+                st.divider()
+                col5,col6 = st.columns(2)
+                with col5:
+                    if kr_unc == 0:
+                        edit_krel = st.checkbox('Edit Analogue Krel?',key=f'edit_{kr}')
+                        if edit_krel:
+                            consistency_check = st.checkbox('Consistency Check?',help=help_strings['krel_consistency'],key=f'check_{kr}')
+                            if consistency_check:
+                                swi_user = st.number_input('swi',0.,1.,swi_an,key=f'uinput_{kr}')
+
+                                sor_user = (1 - swi_user)/2
+                                krw_user = min(1,krw_an*swi_user/swi_an)
+                                kro_user = min(1,kro_an*swi_an/swi_user)
+                                no_user = no_an*swi_an/swi_user
+                                nw_user = nw_an*swi_user/swi_an
+                
+                            else:
+                                kro_user = st.number_input('kro',0.,1.,kro_an,key=f'uin1_{kr}')
+                                krw_user = st.number_input('krw',0.,1.,krw_an,key=f'uin2_{kr}')
+                                swi_user = st.number_input('swi',0.,1.,swi_an,key=f'uin3_{kr}')
+                                sor_user = st.number_input('sor',0.,1.,sor_an,key=f'uin4_{kr}')
+                                no_user = st.number_input('no',0.,10.,no_an,key=f'uin5_{kr}')
+                                nw_user = st.number_input('nw',0.,10.,nw_an,key=f'uin6_{kr}')
+
+                            sw_e,kro_e,krw_e = calc_corey(kro_user,krw_user,swi_user,sor_user,no_user,nw_user)
+                    
+                    else:
+                        st.header('Denife Ranges for Parameters',divider='blue')
+                        consistency_check = st.checkbox('Consistency Check?',help=help_strings['krel_consistency'],key=f'check_{kr}')
+                        if consistency_check:
+                            krel_properties_dist = st.selectbox('Parameters distribution',options=['Normal','Uniform','Triangular','Lognormal'],key='krel_param')
+                            swi_range = st.slider('swi', 0., 1., (0.2,0.3), help=help_strings['sliders'])
+                            swi_user = np.mean(swi_range)
+                            sor_user = (1 - swi_user)/2
+                            krw_user = min(1,krw_an*swi_user/swi_an)
+                            kro_user = min(1,kro_an*swi_an/swi_user)
+                            no_user = no_an*swi_an/swi_user
+                            nw_user = nw_an*swi_user/swi_an
+                
+                        else:
+                            krel_properties_dist = st.selectbox('Parameters distribution',options=['Normal','Uniform','Triangular','Lognormal'],key='krel_param')
+                            kro_range = st.slider('kro', 0., 1., (0.6,0.9), help=help_strings['sliders'])
+                            krw_range = st.slider('krw', 0., 1., (0.4,0.6), help=help_strings['sliders'])
+                            swi_range = st.slider('swi', 0., 1., (0.2,0.3), help=help_strings['sliders'])
+                            sor_range = st.slider('sor', 0., 1., (0.2,0.3), help=help_strings['sliders'])
+                            no_range = st.slider('no', 0., 10., (3.,5.), help=help_strings['sliders'])
+                            nw_range = st.slider('nw', 0., 10., (1.5,2.5), help=help_strings['sliders'])
+
+                            kro_user = np.mean(kro_range)
+                            krw_user = np.mean(krw_range)
+                            swi_user = np.mean(swi_range)
+                            sor_user = np.mean(sor_range)
+                            no_user = np.mean(no_range)
+                            nw_user = np.mean(nw_range)                        
+
+                        sw_e,kro_e,krw_e = calc_corey(kro_user,krw_user,swi_user,sor_user,no_user,nw_user)
+
+                    with col6:
+                        if kr_unc == 1 or (kr_unc == 0 and edit_krel):
+                            fig, axs = plt.subplots(ncols=1,nrows=1,figsize=[5,5])
+                            axs.plot(sw,kro,'b-',label = f'Analogue {selected_analogue_krel}')
+                            axs.plot(sw,krw,'b-')
+
+                            axs.plot(sw_e,kro_e,'r-',label = 'Edited Krel')
+                            axs.plot(sw_e,krw_e,'r-')
+
+                            axs.set_xlim(0,1)
+                            axs.set_ylim(0,1)
+
+                            axs.legend()
+
+                            st.pyplot(fig.figure, clear_figure=True)                    
+
+        
 
 
 with tabSampling:
