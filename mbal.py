@@ -8,7 +8,7 @@ import requests
 from stqdm import stqdm
 import h5py
 import os
-import openserver
+# import openserver
 
 nsamples = 1000
 
@@ -572,15 +572,15 @@ with tabMBAL:
     # pass;
     mbal_file = st.file_uploader(f"MBAL Base File", help=help_strings['mbal_base_file'], type='mbi')
 
-    if mbal_file is not None:
-        path = os.path.join(os.getcwd(),mbal_file.name)
-        st.write(path)
+    # if mbal_file is not None:
+    #     path = os.path.join(os.getcwd(),mbal_file.name)
+    #     st.write(path)
 
-        petex = openserver.OpenServer()
-        with petex:
-            petex.DoCmd('MBAL.START')
-            petex.DoCmd(f'MBAL.OPENFILE("{path}")')
-
+    #     petex = openserver.OpenServer()
+    #     with petex:
+    #         petex.DoCmd('MBAL.START')
+    #         petex.DoCmd(f'MBAL.OPENFILE("{path}")')
+    #         petex.DoCmd('MBAL.SHUTDOWN')
 
     # url = 'http://es00010252:2301/api/production/SatelliteOilLinearIPRWell/calculate'
 
