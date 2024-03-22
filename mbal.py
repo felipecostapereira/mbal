@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
 import requests
-from stqdm import stqdm
+#from stqdm import stqdm
 import h5py
 
 nsamples = 1000
@@ -33,7 +33,7 @@ help_strings = {
     'norm': f'Values will be always noramlized',
     'pvt': f'Please attach PVT file for this fluid',
     'krel': f'Please attach SWT tables',
-    'krel_consistency': f'If you select this option all ranges will be defined based only on "Swi" to ensure consistency with original selected anaogue'
+    'krel_consistency': f'If you select this option, all ranges will be internally defined based only on "Swi" to ensure consistency with original selected anaogue'
 }
 
 list_mecanismos = {
@@ -127,59 +127,59 @@ list_krels = {
     }
 }
 
-@st.cache_data
-def getModels(selectedModels):
-    dfWell = pd.DataFrame()
-    dfSector = pd.DataFrame()
-    df3D = pd.DataFrame()
-    for key in stqdm(selectedModels):
-        f = h5py.File(analogsModels.get(key), 'r')
+# @st.cache_data
+# def getModels(selectedModels):
+#     dfWell = pd.DataFrame()
+#     dfSector = pd.DataFrame()
+#     df3D = pd.DataFrame()
+#     for key in stqdm(selectedModels):
+#         f = h5py.File(analogsModels.get(key), 'r')
 
-        # tempos
-        mtt = f['/General/MasterTimeTable'] # (0, 0.  , 20280101.  ), (1, 0.1 , 20280101.1 ),
-        sDates = [i[2] for i in mtt]
-        times = f['TimeSeries/SECTORS/Timesteps'] # [0,1,2,3,4...]
+#         # tempos
+#         mtt = f['/General/MasterTimeTable'] # (0, 0.  , 20280101.  ), (1, 0.1 , 20280101.1 ),
+#         sDates = [i[2] for i in mtt]
+#         times = f['TimeSeries/SECTORS/Timesteps'] # [0,1,2,3,4...]
 
-        # datasets
-        wVars = f['TimeSeries/WELLS/Variables']
-        wOrigins = f['TimeSeries/WELLS/Origins']
-        wData = f['TimeSeries/WELLS/Data']
-        gVars = f['TimeSeries/GROUPS/Variables']
-        gOrigins = f['TimeSeries/GROUPS/Origins']
-        gData = f['TimeSeries/GROUPS/Data']
-        sVars = f['TimeSeries/SECTORS/Variables']
-        sOrigins = f['TimeSeries/SECTORS/Origins']
-        sData = f['TimeSeries/SECTORS/Data']
+#         # datasets
+#         wVars = f['TimeSeries/WELLS/Variables']
+#         wOrigins = f['TimeSeries/WELLS/Origins']
+#         wData = f['TimeSeries/WELLS/Data']
+#         gVars = f['TimeSeries/GROUPS/Variables']
+#         gOrigins = f['TimeSeries/GROUPS/Origins']
+#         gData = f['TimeSeries/GROUPS/Data']
+#         sVars = f['TimeSeries/SECTORS/Variables']
+#         sOrigins = f['TimeSeries/SECTORS/Origins']
+#         sData = f['TimeSeries/SECTORS/Data']
 
-        # indexes
-        w_Np_i = np.where(wVars[()] == b'OILVOLSC')[0][0]
-        w_Wp_i = np.where(wVars[()] == b'WATVOLSC')[0][0]
-        s_N_i = np.where(sVars[()] == b'OILSECSU')[0][0]
-        s_FR_i = np.where(sVars[()] == b'OILSECRECO')[0][0]
-        g_Np_i = np.where(gVars[()] == b'OILVOLSC')[0][0]
-        g_Wp_i = np.where(gVars[()] == b'WATVOLSC')[0][0]
-        g_Field_i = np.where((gOrigins[:] == b'FIELD-PRO') | (gOrigins[:] == b'Field-PRO'))[0][0]
-        s_Field_i = np.where((sOrigins[:] == b'FIELD') | (sOrigins[:] == b'Field'))[0][0]
+#         # indexes
+#         w_Np_i = np.where(wVars[()] == b'OILVOLSC')[0][0]
+#         w_Wp_i = np.where(wVars[()] == b'WATVOLSC')[0][0]
+#         s_N_i = np.where(sVars[()] == b'OILSECSU')[0][0]
+#         s_FR_i = np.where(sVars[()] == b'OILSECRECO')[0][0]
+#         g_Np_i = np.where(gVars[()] == b'OILVOLSC')[0][0]
+#         g_Wp_i = np.where(gVars[()] == b'WATVOLSC')[0][0]
+#         g_Field_i = np.where((gOrigins[:] == b'FIELD-PRO') | (gOrigins[:] == b'Field-PRO'))[0][0]
+#         s_Field_i = np.where((sOrigins[:] == b'FIELD') | (sOrigins[:] == b'Field'))[0][0]
 
-        # Well
-        for iw,well in enumerate(wOrigins):
-            dfWell = pd.concat(
-                [dfWell, pd.DataFrame({
-                        'Res': [key.split('_')[0]],
-                        'Modelo': [key],
-                        'Poço': [well.decode()],
-                        'Np': int(6.29/1e6*wData[-1:, w_Np_i, iw]),
-                        'Np+Wp': int(6.29/1e6*(wData[-1:, w_Wp_i, iw]+wData[-1:, w_Np_i, iw]))})
-                ])
+#         # Well
+#         for iw,well in enumerate(wOrigins):
+#             dfWell = pd.concat(
+#                 [dfWell, pd.DataFrame({
+#                         'Res': [key.split('_')[0]],
+#                         'Modelo': [key],
+#                         'Poço': [well.decode()],
+#                         'Np': int(6.29/1e6*wData[-1:, w_Np_i, iw]),
+#                         'Np+Wp': int(6.29/1e6*(wData[-1:, w_Wp_i, iw]+wData[-1:, w_Np_i, iw]))})
+#                 ])
 
-        # Sector Field
-        dfSector = pd.concat([dfSector,pd.DataFrame({
-            'Res': key.split('_')[0],
-            'Modelo': key,
-            'N': int(6.29/1e6*sData[0, s_N_i, s_Field_i]),
-            'FR': sData[-1:, s_FR_i, s_Field_i]
-            })
-        ])
+#         # Sector Field
+#         dfSector = pd.concat([dfSector,pd.DataFrame({
+#             'Res': key.split('_')[0],
+#             'Modelo': key,
+#             'N': int(6.29/1e6*sData[0, s_N_i, s_Field_i]),
+#             'FR': sData[-1:, s_FR_i, s_Field_i]
+#             })
+#         ])
 
         # por = f['SpatialProperties/000000/POR']
         # k = 1000*np.array(f['SpatialProperties/000000/PERMI'])
@@ -194,9 +194,9 @@ def getModels(selectedModels):
         #         'SW': sw
         #     })]
         # )
-        f.close()
+    #     f.close()
 
-    return dfWell, dfSector #, df3D
+    # return dfWell, dfSector #, df3D
 
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
 unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
@@ -598,19 +598,19 @@ with tabAnalog:
     # selectedRes = st.multiselect('Analog Reservoir:',dfWell['Res'].unique().tolist())
     selectedModels = st.multiselect('Analog Models:',analogsModels.keys())
 
-    if len(selectedModels):
-        dfWell,dfSector = getModels(selectedModels)
-        dfWell = dfWell[dfWell['Np'] > 0]
-        dfSector['Np'] = dfSector['N'] * dfSector['FR'] / 100
+    # if len(selectedModels):
+    #     dfWell,dfSector = getModels(selectedModels)
+    #     dfWell = dfWell[dfWell['Np'] > 0]
+    #     dfSector['Np'] = dfSector['N'] * dfSector['FR'] / 100
 
-        groupBy_option = st.radio('Group Vars By:', groupBy_options, horizontal=True)
+    #     groupBy_option = st.radio('Group Vars By:', groupBy_options, horizontal=True)
 
-        st.write('Well Data (Np)')
-        st.write(dfWell.groupby(groupBy_option)['Np'].agg(['sum','mean','count']))
+    #     st.write('Well Data (Np)')
+    #     st.write(dfWell.groupby(groupBy_option)['Np'].agg(['sum','mean','count']))
 
-        st.write('Field Data')
-        # dfSector
-        st.write(dfSector.groupby(groupBy_option)[['Np','N','FR']].mean())
+    #     st.write('Field Data')
+    #     # dfSector
+    #     st.write(dfSector.groupby(groupBy_option)[['Np','N','FR']].mean())
 
 
 with tabResults:
