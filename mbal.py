@@ -10,9 +10,11 @@ import h5py
 import os
 # import openserver
 
+# Constants
 nsamples = 1000
 
 analogsModels = {
+# Methods
     'SGT_BASE':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso20_0906_SPILL_AJGEO_5P4IW_LIFT_R8_UEP120.sr3',
     'SGT_PESS':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso11_Ajus09set21_INTERMED_AJGEO_malha3_InjWAG_crono_ap.sr3',
     'SGT_OTIM':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso23_INTERMED_AJGEO_17ago21_v3A_malha1_hphiso_InjA_500_s98ig_iw4iw6iw8_ap.sr3',
@@ -47,7 +49,27 @@ list_mecanismos = {
 }
 
 fluid_input_options = ['Analogue','Correlation','Input File']
+
 groupBy_options = ['Modelo','Res']
+
+list_krels = {
+    'SEAT': {
+        'kro' : 0.815,
+        'krw' : 0.461,
+        'swi' : 0.27,
+        'sor': 0.365,
+        'no': 4.717,
+        'nw': 1.836
+    },
+    'ACFC': {
+        'kro' : 0.84,
+        'krw' : 0.47,
+        'swi' : 0.19,
+        'sor': 0.405,
+        'no': 2.,
+        'nw': 2.
+    }
+}
 
 list_fluids = {
     'SEAT': {
@@ -72,6 +94,11 @@ list_fluids = {
 
 list_analogues = ["ARAM","SEAT"]
 
+krel_input_options = ['Analogue','User Defined']
+
+list_analogues_krel = ["SEAT","ACFC"]
+
+# Methods
 def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
     pressure_i1 = [list_fluids[analogue]['Pressure'][0] + (psat - list_fluids[analogue]['Pressure'][0])*(Px - list_fluids[analogue]['Pressure'][0])/(list_fluids[analogue]['Psat']-list_fluids[analogue]['Pressure'][0]) for Px in list_fluids[analogue]['Pressure'] if Px <= list_fluids[analogue]['Psat']]
     pressure_i2 = [psat+ (pres - psat)*(Px - list_fluids[analogue]['Psat'])/(list_fluids[analogue]['Pres']-list_fluids[analogue]['Psat']) for Px in list_fluids[analogue]['Pressure'] if Px > list_fluids[analogue]['Psat']]
@@ -101,8 +128,6 @@ def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
     visc_i = visc_i1 + visc_i2
     return(pressure_i,bo_i,rs_i,visc_i)
 
-krel_input_options = ['Analogue','User Defined']
-
 def calc_corey(kro,krw,swi,sor,no,nw):
     sw = np.linspace(swi,1-sor,25)
     swd = [(swx - swi)/((1 - sor) - swi) for swx in sw]
@@ -113,27 +138,14 @@ def calc_corey(kro,krw,swi,sor,no,nw):
 
 @st.cache_data
 def runMBAL():
-    st.session_state['message'] = 'Hello World!'
-
-list_analogues_krel = ["SEAT","ACFC"]
-list_krels = {
-    'SEAT': {
-        'kro' : 0.815,
-        'krw' : 0.461,
-        'swi' : 0.27,
-        'sor': 0.365,
-        'no': 4.717,
-        'nw': 1.836
-    },
-    'ACFC': {
-        'kro' : 0.84,
-        'krw' : 0.47,
-        'swi' : 0.19,
-        'sor': 0.405,
-        'no': 2.,
-        'nw': 2.
-    }
-}
+    petex = openserver.OpenServer()
+    petex.connect()
+    st.session_state['message'] = 'Run Started World!'
+    petex.DoCmd('MBAL.START')
+    petex.DoCmd('MBAL.OPENFILE("{monai_p50_blackoil.mbi}")')
+    petex.DoCmd('MBAL.SHUTDOWN')
+    petex.disconnect()
+    st.session_state['message'] = 'Run Finished - Check Results Tab'
 
 @st.cache_data
 def getModels(selectedModels):
@@ -206,9 +218,9 @@ def getModels(selectedModels):
 
     return dfWell, dfSector #, df3D
 
+# Layout Elements
 unitsOil = st.sidebar.radio('Oil Units:',['MMm³','MMBBL'], horizontal=True)
 unitsGas = st.sidebar.radio('Gas Units:',['MMm³','TCF'], horizontal=True)
-
 st.subheader('_Reservoir Potential Evaluation_')
 
 tabRes,tabFluid,tabRockFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabResults,tabAnalog,tabHelp =  st.tabs([
@@ -564,11 +576,9 @@ with tabSchedule:
     interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='teste help', placeholder='One new well every 90 days')
 with tabMBAL:
     # pass;
-    # mbal_file = st.file_uploader(f"MBAL Base File", help=help_strings['mbal_base_file'], type='mbi')
-
     bt_run_mbal = st.button('Run MBAL', on_click=runMBAL)
-
     st.session_state['message']
+
 
     # if mbal_file is not None:
     #     path = os.path.join(os.getcwd(),mbal_file.name)
