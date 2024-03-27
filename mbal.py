@@ -8,6 +8,7 @@ import requests
 from stqdm import stqdm
 import h5py
 import os
+import openserver as openserver
 # import openserver
 
 nsamples = 1000
@@ -110,6 +111,12 @@ def calc_corey(kro,krw,swi,sor,no,nw):
     krw_corey = [krw*(swx**nw) for swx in swd]
 
     return(sw,kro_corey,krw_corey)
+
+def mbal_calc(volume_i):
+    petex.DoSet("MBAL.MB[0].TANK[0].OGIP",f"{volume_i}")
+    petex.DoCmd('MBAL.MB.RunPrediction')
+    return(petex.DoGet("MBAL.MB[0].TRES[{Prediction}][{Prediction}][$].GASRECOVER"))
+
 
 list_analogues_krel = ["SEAT","ACFC"]
 
@@ -535,7 +542,7 @@ with tabRockFluid:
 
 with tabSampling:
     st.subheader('MBAL Runs', divider='blue')
-    nruns = st.number_input('MBAL runs:', 10, None, 100, step=100)
+    nruns = st.number_input('MBAL runs:', 2, None, 4, step=100)
     pi_dist = np.random.normal(pi_mean, pi_std, nruns)
     np_well_dist = np.random.normal(np_well_mean, np_well_std, nruns)
     fluid_dist = np.random.choice(fluids, size=nruns, p=fluid_prob)
@@ -569,18 +576,51 @@ with tabSchedule:
     interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='teste help', placeholder='One new well every 90 days')
 
 with tabMBAL:
-    # pass;
-    mbal_file = st.file_uploader(f"MBAL Base File", help=help_strings['mbal_base_file'], type='mbi')
+    #mbal_file = st.text_input("Adicione o nome do template MBAL, caso exista")
 
-    # if mbal_file is not None:
-    #     path = os.path.join(os.getcwd(),mbal_file.name)
-    #     st.write(path)
+    petex = openserver.OpenServer()
+    run_MBAL = st.checkbox("Run MBAL")
+    #if mbal_file is not None:
+    #    path = mbal_file + ".mbi"
+    #    print(path)
+    #else:
+    path = "monai_p50_blackoil_streamlit.mbi"
+    #if run_MBAL:
+    with petex:
+       #petex.connect()
+        petex.DoCmd('MBAL.START')
+        petex.DoCmd(f'MBAL.OPENFILE("{os.path.join(os.getcwd(),path)}")')
 
-    #     petex = openserver.OpenServer()
-    #     with petex:
-    #         petex.DoCmd('MBAL.START')
-    #         petex.DoCmd(f'MBAL.OPENFILE("{path}")')
-    #         petex.DoCmd('MBAL.SHUTDOWN')
+        Curvas = [mbal_calc(vol[i]) for i in range(nruns)]
+        FRg = [Curvas[i][-1] for i in range(nruns)]
+        Gp = [Curvas[i]*vol[i]/100 for i in range(nruns)]
+
+                # for i in range (len(samples)):
+                #     volume = samples.loc[i+1,'Vol']
+                #     #st.write(volume)
+                #     petex.DoSet("MBAL.MB[0].TANK[0].OGIP",f"{volume}")
+                #     petex.DoCmd('MBAL.MB.RunPrediction')
+                #     FR = petex.DoGet("MBAL.MB[0].TRES[{Prediction}][{Prediction}][_].GASRECOVER")
+                #     results_table = pd.DataFrame(
+                #                         {
+                #                             'Vol':vol,
+                #                             'FRg':FR
+                #                         },
+                #                         index=[i+1 for i in range(nruns)]
+                #                     )
+        petex.DoCmd('MBAL.SHUTDOWN')
+        #petex.disconnect()
+
+        results_mbal = pd.DataFrame(
+                                {
+                                    'Vol':vol,
+                                    'FR':FRg
+                                },
+                                index=[i+1 for i in range(nruns)]
+                    )
+        st.write(results_mbal)
+
+
 
     # url = 'http://es00010252:2301/api/production/SatelliteOilLinearIPRWell/calculate'
 
@@ -632,6 +672,21 @@ with tabAnalog:
 
 
 with tabResults:
+    #if run_MBAL:
+    anos = np.linspace(0,31,31)
+
+    fig_res, axs = plt.subplots(ncols=1,nrows=2,figsize=[5,5])
+    for i in range(len(Curvas)):
+        axs[0].plot(anos,Curvas[i],'b-')
+        axs[0].set_xlabel("Year")
+        axs[0].set_ylabel("FRg")
+
+        axs[1].plot(anos,Gp[i],'b-')
+        axs[1].set_xlabel("Year")
+        axs[1].set_ylabel("Gp")
+
+    st.pyplot(fig_res.figure, clear_figure=True)
+
     st.header("calma, estamos fazendo")
 
 st.caption('Powered by DND :sunglasses:')
