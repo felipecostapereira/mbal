@@ -111,8 +111,11 @@ def calc_corey(kro,krw,swi,sor,no,nw):
 
     return(sw,kro_corey,krw_corey)
 
-list_analogues_krel = ["SEAT","ACFC"]
+@st.cache_data
+def runMBAL():
+    st.session_state['message'] = 'Hello World!'
 
+list_analogues_krel = ["SEAT","ACFC"]
 list_krels = {
     'SEAT': {
         'kro' : 0.815,
@@ -220,7 +223,6 @@ tabRes,tabFluid,tabRockFluid,tabVFP,tabSampling,tabSchedule,tabMBAL,tabResults,t
     'Analogs:dart:',
     'Help:question:',
     ])
-
 with tabRes:
     st.subheader('Reservoir Data', divider='blue')
     with st.expander('Volumes, Mechanisms, Recoveries'):
@@ -290,7 +292,6 @@ with tabRes:
             j.figure.axes[0].set_xlim((0, 200))
             j.figure.axes[0].set_ylim((0, 100))
             st.pyplot(j.figure, clear_figure=True)
-
 with tabFluid:
     st.subheader('Fluid Scenarios', divider='blue')
     col1, col2 = st.columns(2)
@@ -351,7 +352,6 @@ with tabFluid:
                     st.pyplot(fig.figure, clear_figure=True)
                 else:
                     pass
-
 with tabRockFluid:
     st.subheader('Relative Permeability Set Definition', divider='blue')
 
@@ -529,10 +529,6 @@ with tabRockFluid:
                             axs.legend()
 
                             st.pyplot(fig.figure, clear_figure=True)
-
-
-
-
 with tabSampling:
     st.subheader('MBAL Runs', divider='blue')
     nruns = st.number_input('MBAL runs:', 10, None, 100, step=100)
@@ -563,14 +559,16 @@ with tabSampling:
     st.write(samples)
     st.subheader('Stats', divider='blue')
     st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
-
 with tabSchedule:
     d = st.date_input("Fisrt Oil", datetime.date(2034, 1, 1))
     interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='teste help', placeholder='One new well every 90 days')
-
 with tabMBAL:
     # pass;
-    mbal_file = st.file_uploader(f"MBAL Base File", help=help_strings['mbal_base_file'], type='mbi')
+    # mbal_file = st.file_uploader(f"MBAL Base File", help=help_strings['mbal_base_file'], type='mbi')
+
+    bt_run_mbal = st.button('Run MBAL', on_click=runMBAL)
+
+    st.session_state['message']
 
     # if mbal_file is not None:
     #     path = os.path.join(os.getcwd(),mbal_file.name)
@@ -610,7 +608,6 @@ with tabMBAL:
     #     x = requests.post(url, json = myobj)
     #     st.write(x.text)
 
-
 with tabAnalog:
     selectedModels = st.multiselect('Analog Models:',analogsModels.keys())
     # groupBy_option = st.radio('Group Vars By:', groupBy_options, horizontal=True)
@@ -629,7 +626,6 @@ with tabAnalog:
 
         # plot = sns.kdeplot(dfWell,x='Modelo')
         # st.pyplot(plot.figure, clear_figure=True)
-
 
 with tabResults:
     st.header("calma, estamos fazendo")
