@@ -570,13 +570,12 @@ with tabSampling:
 
     create_samples = st.button("Generate Sampling")
 
-    if create_samples:
-        samples = define_samples(nruns)
+    samples = define_samples(nruns)
 
-        st.subheader('Experiments', divider='blue')
-        st.write(samples)
-        st.subheader('Stats', divider='blue')
-        st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
+    st.subheader('Experiments', divider='blue')
+    st.write(samples)
+    st.subheader('Stats', divider='blue')
+    st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
 
 with tabSchedule:
     d = st.date_input("Fisrt Oil", datetime.date(2034, 1, 1))
