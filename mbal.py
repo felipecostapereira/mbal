@@ -7,6 +7,9 @@ import datetime
 import requests
 #from stqdm import stqdm
 import h5py
+import os
+import openserver as openserver
+# import openserver
 
 nsamples = 1000
 
@@ -14,15 +17,17 @@ analogsModels = {
     'SGT_BASE':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso20_0906_SPILL_AJGEO_5P4IW_LIFT_R8_UEP120.sr3',
     'SGT_PESS':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso11_Ajus09set21_INTERMED_AJGEO_malha3_InjWAG_crono_ap.sr3',
     'SGT_OTIM':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso23_INTERMED_AJGEO_17ago21_v3A_malha1_hphiso_InjA_500_s98ig_iw4iw6iw8_ap.sr3',
-    # 'ORION_OTIM':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Versao_fev2022/OTIM_INT_EMI_SW_SGT_VFP17KM_malha6_2032_uep225.sr3',
-    # 'URTIGA_6600':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6600_vfps6ID_09.sr3',
-    # 'URTIGA_6650':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6650_6pol_120kbpd_5P_3IA.sr3',
-    # 'URTIGA_6700':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6700_6pol_120kbpd_2injSUL_7P5IA_vf.sr3',
-    'ARAM_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_POS_POCO/1525_ARAM_KOTIM_6450_FCARC_SWO_RC2_KMIN_9P6IW.sr3',
-    'ARAM_PESS':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_POS_POCO/1525_ARAM_KOTIM_6450_FCARC_SWO_RC1_KMIN_5P4IW.sr3',
-    # 'ARAM_PREPOCO_PESS':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/0721_ARAM_GPSM_6375_CMDR_FCARC_5.2IG_RINJ6_POST.sr3',
-    # 'ARAM_PREPOCO_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/1525_ARAM_GMDR_6375_CPSM_FCARC_10.7IW_PROD1000.sr3',
-    # 'ARAM_PREPOCO_OTIM':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/1444_ARAM_GMDR_6700_CPSM_FSGT_8.5IW_9.7IW_8.6IW_PROD1000.sr3',
+    'ORION_OTIM':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Versao_fev2022/OTIM_INT_EMI_SW_SGT_VFP17KM_malha6_2032_uep225.sr3',
+    'URTIGA_6600':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6600_vfps6ID_09.sr3',
+    'URTIGA_6650':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6650_6pol_120kbpd_5P_3IA.sr3',
+    'URTIGA_6700':'L:/res/santos/presal_pre_projetos/SW_Sagitario/ER/3_Modelo_de_Simulacao/RUNS/Urtiga/Urtiga_fluido_Carcara_mar2022_refpres_COA6700_6pol_120kbpd_2injSUL_7P5IA_vf.sr3',
+    'ARAM_V1_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_POS_POCO/1525_ARAM_KOTIM_6450_FCARC_SWO_RC2_KMIN_9P6IW.sr3',
+    'ARAM_V1_PESS':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_POS_POCO/1525_ARAM_KOTIM_6450_FCARC_SWO_RC1_KMIN_5P4IW.sr3',
+    'ARAM_V2.1_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_V2/RUNS_BASE_109EXPEDITO/Cenario_B_SET32_FVMtortuga_vfinal.sr3',
+    'ARAM_V2.2_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2022_V2/RUNS_BASE_109/Testes_Malha/CenarioA2_pos109_05dez23B_09P6I_v1c_trigger_PROD-INJv2_BHP440mxc_A2B_BHP_500.sr3',
+    'ARAM_PREPOCO_PESS':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/0721_ARAM_GPSM_6375_CMDR_FCARC_5.2IG_RINJ6_POST.sr3',
+    'ARAM_PREPOCO_BASE':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/1525_ARAM_GMDR_6375_CPSM_FCARC_10.7IW_PROD1000.sr3',
+    'ARAM_PREPOCO_OTIM':'L:/res/santos/presal_pre_projetos/Aram/ER/Modelo_de_Simulacao/2020_PIONEIRO/1444_ARAM_GMDR_6700_CPSM_FSGT_8.5IW_9.7IW_8.6IW_PROD1000.sr3',
     'UIR_ARAUCARIA':'L:/res/santos/presal_pre_projetos/Uirapuru/ER/3_Modelo_de_Simulacao/RUNS/MODELO_BU2E/UIR_EXPORT_3P2IA_SEMCDEPTH_CSP_ARA.sr3',
     'UIR_PINHAO':'L:/res/santos/presal_pre_projetos/Uirapuru/ER/3_Modelo_de_Simulacao/RUNS/MODELO_BU2E/UIR_EXPORT_4P4IW_SEMCDEPTH_CSP_PIN.sr3'
 }
@@ -33,7 +38,8 @@ help_strings = {
     'norm': f'Values will be always noramlized',
     'pvt': f'Please attach PVT file for this fluid',
     'krel': f'Please attach SWT tables',
-    'krel_consistency': f'If you select this option, all ranges will be internally defined based only on "Swi" to ensure consistency with original selected anaogue'
+    'krel_consistency': f'If you select this option all ranges will be defined based only on "Swi" to ensure consistency with original selected anaogue',
+    'mbal_base_file': 'Select mbal file to start with',
 }
 
 list_mecanismos = {
@@ -99,12 +105,18 @@ def normalize_fluid(analogue,temp,pres,psat,bo,rs,visc,tipo):
 krel_input_options = ['Analogue','User Defined']
 
 def calc_corey(kro,krw,swi,sor,no,nw):
-    sw = np.linspace(swi,1-sor,25) 
+    sw = np.linspace(swi,1-sor,25)
     swd = [(swx - swi)/((1 - sor) - swi) for swx in sw]
     kro_corey = [kro*((1-swx)**no) for swx in swd]
     krw_corey = [krw*(swx**nw) for swx in swd]
 
     return(sw,kro_corey,krw_corey)
+
+def mbal_calc(volume_i):
+    petex.DoSet("MBAL.MB[0].TANK[0].OGIP",f"{volume_i}")
+    petex.DoCmd('MBAL.MB.RunPrediction')
+    return(petex.DoGet("MBAL.MB[0].TRES[{Prediction}][{Prediction}][$].GASRECOVER"))
+
 
 list_analogues_krel = ["SEAT","ACFC"]
 
@@ -413,7 +425,7 @@ with tabRockFluid:
                         nw_user = np.mean(nw_range)
 
                     sw,kro,krw = calc_corey(kro_user,krw_user,swi_user,sor_user,no_user,nw_user)
-                
+
                 else:
                     selected_analogue_krel = st.selectbox(f'Select Analogue Krel', list_analogues_krel,key=f'{kr}')
                     kro_an = list_krels[selected_analogue_krel]['kro']
@@ -450,7 +462,7 @@ with tabRockFluid:
                             axs.set_title(f'Average Krel {kr}')
 
                     st.pyplot(fig.figure, clear_figure=True)
-            
+
             if krel_selection == "Analogue":
                 st.divider()
                 col5,col6 = st.columns(2)
@@ -467,7 +479,7 @@ with tabRockFluid:
                                 kro_user = min(1,kro_an*swi_an/swi_user)
                                 no_user = no_an*swi_an/swi_user
                                 nw_user = nw_an*swi_user/swi_an
-                
+
                             else:
                                 kro_user = st.number_input('kro',0.,1.,kro_an,key=f'uin1_{kr}')
                                 krw_user = st.number_input('krw',0.,1.,krw_an,key=f'uin2_{kr}')
@@ -477,7 +489,7 @@ with tabRockFluid:
                                 nw_user = st.number_input('nw',0.,10.,nw_an,key=f'uin6_{kr}')
 
                             sw_e,kro_e,krw_e = calc_corey(kro_user,krw_user,swi_user,sor_user,no_user,nw_user)
-                    
+
                     else:
                         st.header('Denife Ranges for Parameters',divider='blue')
                         consistency_check = st.checkbox('Consistency Check?',help=help_strings['krel_consistency'],key=f'check_{kr}')
@@ -490,7 +502,7 @@ with tabRockFluid:
                             kro_user = min(1,kro_an*swi_an/swi_user)
                             no_user = no_an*swi_an/swi_user
                             nw_user = nw_an*swi_user/swi_an
-                
+
                         else:
                             krel_properties_dist = st.selectbox('Parameters distribution',options=['Normal','Uniform','Triangular','Lognormal'],key='krel_param')
                             kro_range = st.slider('kro', 0., 1., (0.6,0.9), help=help_strings['sliders'])
@@ -505,7 +517,7 @@ with tabRockFluid:
                             swi_user = np.mean(swi_range)
                             sor_user = np.mean(sor_range)
                             no_user = np.mean(no_range)
-                            nw_user = np.mean(nw_range)                        
+                            nw_user = np.mean(nw_range)
 
                         sw_e,kro_e,krw_e = calc_corey(kro_user,krw_user,swi_user,sor_user,no_user,nw_user)
 
@@ -523,14 +535,14 @@ with tabRockFluid:
 
                             axs.legend()
 
-                            st.pyplot(fig.figure, clear_figure=True)                    
+                            st.pyplot(fig.figure, clear_figure=True)
 
-        
+
 
 
 with tabSampling:
     st.subheader('MBAL Runs', divider='blue')
-    nruns = st.number_input('MBAL runs:', 10, None, 100, step=100)
+    nruns = st.number_input('MBAL runs:', 2, None, 4, step=100)
     pi_dist = np.random.normal(pi_mean, pi_std, nruns)
     np_well_dist = np.random.normal(np_well_mean, np_well_std, nruns)
     fluid_dist = np.random.choice(fluids, size=nruns, p=fluid_prob)
@@ -564,7 +576,52 @@ with tabSchedule:
     interval = st.number_input('Interval between wells (days):', 0, None, None, step=30, help='teste help', placeholder='One new well every 90 days')
 
 with tabMBAL:
-    pass;
+    #mbal_file = st.text_input("Adicione o nome do template MBAL, caso exista")
+
+    petex = openserver.OpenServer()
+    run_MBAL = st.checkbox("Run MBAL")
+    #if mbal_file is not None:
+    #    path = mbal_file + ".mbi"
+    #    print(path)
+    #else:
+    path = "monai_p50_blackoil_streamlit.mbi"
+    #if run_MBAL:
+    with petex:
+       #petex.connect()
+        petex.DoCmd('MBAL.START')
+        petex.DoCmd(f'MBAL.OPENFILE("{os.path.join(os.getcwd(),path)}")')
+
+        Curvas = [mbal_calc(vol[i]) for i in range(nruns)]
+        FRg = [Curvas[i][-1] for i in range(nruns)]
+        Gp = [Curvas[i]*vol[i]/100 for i in range(nruns)]
+
+                # for i in range (len(samples)):
+                #     volume = samples.loc[i+1,'Vol']
+                #     #st.write(volume)
+                #     petex.DoSet("MBAL.MB[0].TANK[0].OGIP",f"{volume}")
+                #     petex.DoCmd('MBAL.MB.RunPrediction')
+                #     FR = petex.DoGet("MBAL.MB[0].TRES[{Prediction}][{Prediction}][_].GASRECOVER")
+                #     results_table = pd.DataFrame(
+                #                         {
+                #                             'Vol':vol,
+                #                             'FRg':FR
+                #                         },
+                #                         index=[i+1 for i in range(nruns)]
+                #                     )
+        petex.DoCmd('MBAL.SHUTDOWN')
+        #petex.disconnect()
+
+        results_mbal = pd.DataFrame(
+                                {
+                                    'Vol':vol,
+                                    'FR':FRg
+                                },
+                                index=[i+1 for i in range(nruns)]
+                    )
+        st.write(results_mbal)
+
+
+
     # url = 'http://es00010252:2301/api/production/SatelliteOilLinearIPRWell/calculate'
 
     # for wct in ['0','10','20', '50', '95']:
@@ -595,7 +652,6 @@ with tabMBAL:
 
 
 with tabAnalog:
-    # selectedRes = st.multiselect('Analog Reservoir:',dfWell['Res'].unique().tolist())
     selectedModels = st.multiselect('Analog Models:',analogsModels.keys())
 
     # if len(selectedModels):
@@ -614,6 +670,21 @@ with tabAnalog:
 
 
 with tabResults:
+    #if run_MBAL:
+    anos = np.linspace(0,31,31)
+
+    fig_res, axs = plt.subplots(ncols=1,nrows=2,figsize=[5,5])
+    for i in range(len(Curvas)):
+        axs[0].plot(anos,Curvas[i],'b-')
+        axs[0].set_xlabel("Year")
+        axs[0].set_ylabel("FRg")
+
+        axs[1].plot(anos,Gp[i],'b-')
+        axs[1].set_xlabel("Year")
+        axs[1].set_ylabel("Gp")
+
+    st.pyplot(fig_res.figure, clear_figure=True)
+
     st.header("calma, estamos fazendo")
 
 st.caption('Powered by DND :sunglasses:')
