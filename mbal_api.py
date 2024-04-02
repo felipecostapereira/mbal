@@ -10,7 +10,6 @@ import h5py
 import os
 import openserver as openserver
 import json
-# import openserver
 
 analogsModels = {
     'SGT_BASE':'L:/res/santos/presal_pre_projetos/Sagitario/ER/3_Modelo_de_Simulacao/V3A/RUNS/GRID_V3A/SGT_GRID_V3A_Caso20_0906_SPILL_AJGEO_5P4IW_LIFT_R8_UEP120.sr3',
@@ -122,7 +121,6 @@ def mbal_calc(samples,path):
 
     return(x)
 
-
 list_analogues_krel = ["SEAT","ACFC"]
 
 list_krels = {
@@ -144,25 +142,14 @@ list_krels = {
     }
 }
 
-
-# @st.cache_data(max_entries=1)
-# def calculate_MBAL(run,samples,path):
-#     result_mbal = samples
-#     if run:
-#         result_mbal = mbal_calc(samples,path)
-#         FRg = [result_mbal['Results'][i][-1] for i in range(nruns)]
-#         Gp = [FRg[i]*result_mbal['Vol'][i]/100 for i in range(nruns)]
-#     return(result_mbal)
-
-@st.cache_data(max_entries=1)
 def define_samples(nruns):
     pi_dist = np.random.normal(pi_mean, pi_std, nruns)
     np_well_dist = np.random.normal(np_well_mean, np_well_std, nruns)
     fluid_dist = np.random.choice(fluids, size=nruns, p=fluid_prob)
-    if resType=='Oil':
-        vol = np.random.normal(np.mean(voip),(voip[1]-voip[0])/6,nruns)
-    else:
-        vol = np.random.normal(np.mean(vgip),(voip[1]-voip[0])/6,nruns)
+    if voip_dist == 'Normal':                  vol = np.random.normal(voip_mean,voip_stdev,nruns)
+    elif voip_dist == 'Lognormal':             vol = np.e**(np.random.normal(np.log(voip_mean),(np.log(voip[1])-np.log(voip[0]))/6,nruns))
+    elif voip_dist == 'Triangular':            vol = np.random.triangular(voip[0], voip_mean, voip[1], nruns)
+    else:                                      vol = np.random.uniform(voip[0],voip[1], nruns)
 
     samples = pd.DataFrame(
         {
@@ -282,15 +269,13 @@ with tabRes:
         with col2:
             voip_dist = st.selectbox('VOIP distribution',options=['Normal','Uniform','Triangular','Lognormal'])
             if resType == 'Oil':
-                voip = st.slider('VOIP (MMBBL)', 0, 5000, (1000,3000), help=help_strings['sliders'])
-                vgip = (0,0)
+                if unitsOil == 'MMBBL':                     voip = st.slider('VOIP (MMBBL)', 0, 5000, (1000,3000), help=help_strings['sliders'])
+                else:                                       voip = st.slider('VOIP (MMm³)', 0, 800, (160,480), help=help_strings['sliders'])
             else:
-                vgip = st.slider('VGIP (MMm³)', 0, 5000, (1000,2000), help=help_strings['sliders'])
-                voip = (0,0)
+                if unitsGas == 'TCF':                       voip = st.slider('VGIP (tcf)', 0., 8., (1.,3.), help=help_strings['sliders'])
+                else:                                       voip = st.slider('VGIP (MMm³)', 0, 5000, (1000,3000), help=help_strings['sliders'])
             voip_mean = np.mean(voip)
             voip_stdev = (voip[1]-voip[0])/6
-            vgip_mean = np.mean(vgip)
-            vgip_stdev = (vgip[1]-vgip[0])/6
 
             if resType == 'Oil':
                 if voip_dist == 'Normal':                   ploto = sns.kdeplot(np.random.normal(voip_mean,voip_stdev,1000), fill=True)
@@ -300,10 +285,10 @@ with tabRes:
                 ploto.set_xlabel("VOIP")
                 st.pyplot(ploto.figure, clear_figure=True)
             else:
-                if voip_dist == 'Normal':                   plotg = sns.kdeplot(np.random.normal(vgip_mean,vgip_stdev,1000), fill=True)
-                elif voip_dist == 'Lognormal':              plotg = sns.kdeplot(np.e**(np.random.normal(np.log(vgip_mean),(np.log(vgip[1])-np.log(vgip[0]))/6,1000)), fill=True)
-                elif voip_dist == 'Triangular':             plotg = sns.kdeplot(np.random.triangular(vgip[0],vgip_mean,vgip[1],1000), fill=True)
-                else:                                       plotg = sns.kdeplot(np.random.uniform(vgip[0],vgip[1],1000), fill=True)
+                if voip_dist == 'Normal':                   plotg = sns.kdeplot(np.random.normal(voip_mean,voip_stdev,1000), fill=True)
+                elif voip_dist == 'Lognormal':              plotg = sns.kdeplot(np.e**(np.random.normal(np.log(voip_mean),(np.log(voip[1])-np.log(voip[0]))/6,1000)), fill=True)
+                elif voip_dist == 'Triangular':             plotg = sns.kdeplot(np.random.triangular(voip[0],voip_mean,voip[1],1000), fill=True)
+                else:                                       plotg = sns.kdeplot(np.random.uniform(voip[0],voip[1],1000), fill=True)
                 plotg.set_xlabel("VGIP")
                 st.pyplot(plotg.figure, clear_figure=True)
 
@@ -578,18 +563,20 @@ with tabRockFluid:
 
                             st.pyplot(fig.figure, clear_figure=True)
 
-
-
-
 with tabSampling:
-    st.subheader('MBAL Runs', divider='blue')
-    nruns = st.number_input('MBAL runs:', 2, None, 4, step=100)
-    samples = define_samples(nruns)
 
-    st.subheader('Experiments', divider='blue')
-    st.write(samples)
-    st.subheader('Stats', divider='blue')
-    st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
+    st.subheader('MBAL Runs', divider='blue')
+    nruns = st.number_input('MBAL runs:', 3, None, 10, step=100)
+
+    create_samples = st.button("Generate Sampling")
+
+    if create_samples:
+        samples = define_samples(nruns)
+
+        st.subheader('Experiments', divider='blue')
+        st.write(samples)
+        st.subheader('Stats', divider='blue')
+        st.write(samples.describe().loc[['mean', '50%', 'std', 'min', 'max', 'count']].round(0))
 
 with tabSchedule:
     d = st.date_input("Fisrt Oil", datetime.date(2034, 1, 1))
@@ -611,9 +598,6 @@ with tabMBAL:
 
         st.write(results_table)
 
-
-
-
 with tabAnalog:
     selectedModels = st.multiselect('Analog Models:',analogsModels.keys())
     # groupBy_option = st.radio('Group Vars By:', groupBy_options, horizontal=True)
@@ -632,7 +616,6 @@ with tabAnalog:
 
         # plot = sns.kdeplot(dfWell,x='Modelo')
         # st.pyplot(plot.figure, clear_figure=True)
-
 
 with tabResults:
     if run_simulator:
