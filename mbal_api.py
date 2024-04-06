@@ -744,6 +744,7 @@ with tabSchedule:
                 key_fpso = 1
                 fpso_qo = st.number_input("Oil Capacity (kbpd)")
                 fpso_qg = st.number_input("Gas Capacity (MMm³/d)")
+
                 col1, col2 = st.columns(2)
                 with col1:
                     if 'fpso_qo_ss' not in st.session_state:
@@ -754,6 +755,14 @@ with tabSchedule:
                     if add_fpso:
                         st.session_state.fpso_qo_ss.append(fpso_qo)
                         st.session_state.fpso_qg_ss.append(fpso_qg)
+
+                    if len(st.session_state.fpso_qo_ss) > 0:
+                        st.write("FPSO List:\n")
+                        for i in range(len(st.session_state.fpso_qo_ss)):
+                            st.write(f"{i+1})\tQo = {st.session_state.fpso_qo_ss[i]} kbpd \t-\t Qg = {st.session_state.fpso_qg_ss[i]} MMm³/d\n")
+                    else:
+                        st.write("")
+                            
                 
                 with col2:
                     reset_fpso_ss = st.button("Reset FPSO List")
