@@ -119,7 +119,7 @@ def mbal_calc(samples,path):
     date_end[-1] = str(int(date_end[-1]) + delta_prod)
     date_end = '/'.join(date_end)
     myobj = {
-        "volumes": samples['Vol'].tolist(),
+        "volumes": (samples['Vol']*mul_vol).tolist(),
         "path": path,
         "date_start":d,
         "date_end":date_end,
@@ -139,7 +139,7 @@ def mbal_calc(samples,path):
     }
     if "KREL" in samples.columns:
         myobj = {
-            "volumes": samples['Vol'].tolist(),
+            "volumes": (samples['Vol']*mul_vol).tolist(),
             "path": path,
             "date_start":d,
             "date_end":date_end,
@@ -158,19 +158,31 @@ def mbal_calc(samples,path):
     }
         
     if def_cons:
-        myobj["fpso_qo"]=fpso_qo
-        myobj["fpso_qg"]=fpso_qg*(10**6)
         myobj["prod_qo"]=prod_qo
         myobj["prod_qg"]=prod_qg*(10**6)
         myobj["prod_bhp"]=prod_bhp
-        if def_cons_k > 0.5:
-            myobj["nprod"]=prod_number
-        elif resType == 'Oil':
-            nwprod = round(fpso_qo/prod_qo+0.5,0)
-            myobj["nprod"]=nwprod
+        if "FPSO_Qo" in samples.columns:
+            myobj["fpso_qo"]=samples["FPSO_Qo"].tolist()
+            myobj["fpso_qg"]=samples["FPSO_Qg"].tolist()
+            if def_cons_k > 0.5:
+                myobj["nprod"]=prod_number
+            elif resType == 'Oil':
+                nwprod = [round(myobj["fpso_qo"][i]/prod_qo+0.5,0) for i in range(nruns)]
+                myobj["nprod"]=nwprod
+            else:
+                nwprod = [round(myobj["fpso_qg"][i]/(1000000*prod_qg)+0.5,0) for i in range(nruns)]
+                myobj["nprod"]=nwprod
         else:
-            nwprod = round(fpso_qg/prod_qg+0.5,0)
-            myobj["nprod"]=nwprod
+            myobj["fpso_qo"]=fpso_qo
+            myobj["fpso_qg"]=fpso_qg*(10**6)
+            if def_cons_k > 0.5:
+                myobj["nprod"]=prod_number
+            elif resType == 'Oil':
+                nwprod = round(fpso_qo/prod_qo+0.5,0)
+                myobj["nprod"]=nwprod
+            else:
+                nwprod = round(fpso_qg/prod_qg+0.5,0)
+                myobj["nprod"]=nwprod
 
     print(myobj["nprod"])
     x = requests.put("http://10.14.141.21:8600/mbal",json = myobj)
@@ -279,10 +291,22 @@ def define_samples(nruns):
                                  KREL_krw=krel_krw,
                                  KREL_swi=krel_swi,
                                  KREL_sor=krel_sor)
+        
+    if key_fpso == 1 and len(st.session_state.fpso_qo_ss) >0 :
+        cap_qo = st.session_state.fpso_qo_ss
+        cap_qg = st.session_state.fpso_qg_ss
+
+        list_prob_fpso = np.random.choice(len(cap_qo), size=nruns)
+        list_fpso_qo = [int(cap_qo[i]) for i in list_prob_fpso]
+        list_fpso_qg = [int(cap_qg[i])*10**6 for i in list_prob_fpso]
+
+        samples = samples.assign(FPSO_Qo=list_fpso_qo,
+                       FPSO_Qg=list_fpso_qg)
 
     #samples['Np'] = samples['Vol'] * rf/100
     #samples['Wells'] = samples['Np']/samples['Np_Well']
     samples = samples.round(3)
+
     return(samples)
 
 @st.cache_data
@@ -387,11 +411,19 @@ with tabRes:
         with col2:
             voip_dist = st.selectbox('VOIP distribution',options=['Normal','Uniform','Triangular','Lognormal'])
             if resType == 'Oil':
-                if unitsOil == 'MMBBL':                     voip = st.slider('VOIP (MMBBL)', 0, 5000, (1000,3000), help=help_strings['sliders'])
-                else:                                       voip = st.slider('VOIP (MMm³)', 0, 800, (160,480), help=help_strings['sliders'])
+                if unitsOil == 'MMBBL':                     
+                    voip = st.slider('VOIP (MMBBL)', 0, 10000, (1000,3000), help=help_strings['sliders'])
+                    mul_vol = 1
+                else:                                       
+                    voip = st.slider('VOIP (MMm³)', 0, 1500, (160,480), help=help_strings['sliders'])
+                    mul_vol = 6.289
             else:
-                if unitsGas == 'TCF':                       voip = st.slider('VGIP (tcf)', 0., 8., (1.,3.), help=help_strings['sliders'])
-                else:                                       voip = st.slider('VGIP (MMm³)', 0, 5000, (1000,3000), help=help_strings['sliders'])
+                if unitsGas == 'TCF':                       
+                    voip = st.slider('VGIP (tcf)', 0., 10., (1.,4.), help=help_strings['sliders'])
+                    mul_vol = 1000
+                else:                                       
+                    voip = st.slider('VGIP (MMm³)', 0, 300000, (28000,110000), help=help_strings['sliders'])
+                    mul_vol = 0.0353
             voip_mean = np.mean(voip)
             voip_stdev = (voip[1]-voip[0])/6
 
@@ -707,8 +739,34 @@ with tabSchedule:
     def_cons = st.checkbox("Define Constraints?",help=help_strings['def_const'])
     if def_cons:
         with st.expander("FPSO Constraints"):
-            fpso_qo = st.number_input("Oil Capacity (kbpd)",40,675,150)
-            fpso_qg = st.number_input("Gas Capacity (MMm³/d)",3.,36.,12.)
+            fpso_unc = st.checkbox("Use FPSO as Uncertainty Parameter?")
+            if fpso_unc:
+                key_fpso = 1
+                fpso_qo = st.number_input("Oil Capacity (kbpd)")
+                fpso_qg = st.number_input("Gas Capacity (MMm³/d)")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if 'fpso_qo_ss' not in st.session_state:
+                        st.session_state.fpso_qo_ss = []
+                        st.session_state.fpso_qg_ss = []
+
+                    add_fpso = st.button("Add FPSO")
+                    if add_fpso:
+                        st.session_state.fpso_qo_ss.append(fpso_qo)
+                        st.session_state.fpso_qg_ss.append(fpso_qg)
+                
+                with col2:
+                    reset_fpso_ss = st.button("Reset FPSO List")
+                    if reset_fpso_ss:
+                        for key in st.session_state.keys():
+                            st.session_state.fpso_qo_ss = []
+                            st.session_state.fpso_qg_ss = []
+
+
+            else:
+                key_fpso = 0
+                fpso_qo = st.number_input("Oil Capacity (kbpd)",40,675,150)
+                fpso_qg = st.number_input("Gas Capacity (MMm³/d)",3.,36.,12.)
         with st.expander("Producer Well Constraints"):
             prod_qo = st.number_input("Max Oil Rate (kbpd)",10,80,40)
             prod_qg = st.number_input("Max Gas Rate (MMm³/d)",0.2,6.,4.)
@@ -724,6 +782,8 @@ with tabSchedule:
             pass
         with st.expander("Gas Injector Well Constraints"):
             pass
+    else:
+        key_fpso = 0
 
 with tabSampling:
 
@@ -785,9 +845,9 @@ with tabResults:
         p90 = Gp.index(pct_frg[int(math.ceil(nruns*0.1))])
         anos = np.linspace(0,delta_prod+2,delta_prod+2)
 
-        st.write(f'P10 {delta_prod} years = {round(Gp[p10],0)}')
-        st.write(f'P50 {delta_prod} years = {round(Gp[p50],0)}')
-        st.write(f'P90 {delta_prod} years = {round(Gp[p90],0)}')
+        st.write(f'P10 {delta_prod} years = {round(Gp[p10],2)} {unitsGas}')
+        st.write(f'P50 {delta_prod} years = {round(Gp[p50],2)} {unitsGas}')
+        st.write(f'P90 {delta_prod} years = {round(Gp[p90],2)} {unitsGas}')
 
         fig_res, axs = plt.subplots(ncols=1,nrows=2,figsize=[5,5])
         for i in range(len(samples['Vol'])):
