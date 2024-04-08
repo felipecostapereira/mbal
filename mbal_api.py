@@ -218,7 +218,8 @@ list_krels = {
     }
 }
 
-def define_samples(nruns):
+@st.cache_data(max_entries=1)
+def define_samples(nruns,count_session):
     pi_dist = np.random.normal(pi_mean, pi_std, nruns)
     np_well_dist = np.random.normal(np_well_mean, np_well_std, nruns)
 
@@ -801,7 +802,13 @@ with tabSampling:
 
     create_samples = st.button("Generate Sampling")
 
-    samples = define_samples(nruns)
+    if create_samples:
+        if 'count_samples' not in st.session_state:
+            st.session_state.count_samples = 0
+        else:
+            st.session_state.count_samples += 1
+
+    samples = define_samples(nruns,st.session_state.count_samples)
 
     st.subheader('Experiments', divider='blue')
     st.write(samples)
