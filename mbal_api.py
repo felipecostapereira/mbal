@@ -40,7 +40,7 @@ help_strings = {
     'krel_consistency': f'If you select this option all ranges will be defined based only on "Swi" to ensure consistency with original selected anaogue',
     'mbal_base_file': 'Select mbal file to start with',
     'def_const': 'Keep unchecked if you wish to keep the constraints in the reference MBAL file',
-    'nprod': 'If you keep this option unchecked, well number will be estimated based on the capcities and rates defined above'
+    'nprod': 'If you keep this option unchecked, well number will be estimated based on the capacities and rates defined above'
 }
 
 list_mecanismos = {
@@ -398,6 +398,9 @@ tabRes,tabFluid,tabRockFluid,tabVFP,tabSchedule,tabSampling,tabMBAL,tabResults,t
     'Analogs:dart:',
     'Help:question:',
     ])
+
+if 'count_samples' not in st.session_state:
+    st.session_state.count_samples = 0
 
 with tabRes:
     st.subheader('Reservoir Data', divider='blue')
